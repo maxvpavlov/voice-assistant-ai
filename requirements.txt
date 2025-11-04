@@ -1,0 +1,15 @@
+# Voice Assistant Dependencies
+
+# Wake Word Detection
+openwakeword>=0.6.0
+
+# Audio Processing
+pyaudio>=0.2.13
+numpy>=1.24.0
+
+# Future: Speech Recognition (to be added later)
+# vosk>=0.3.45
+# openai-whisper>=20231117
+
+# Utilities
+typing-extensions>=4.8.0
