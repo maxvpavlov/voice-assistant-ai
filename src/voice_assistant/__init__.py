@@ -7,5 +7,6 @@ __version__ = "0.1.0"
 __author__ = "Voice Assistant Team"
 
 from .wake_word_detector import WakeWordDetector
+from .audio_recorder import AudioRecorder
 
-__all__ = ["WakeWordDetector"]
+__all__ = ["WakeWordDetector", "AudioRecorder"]

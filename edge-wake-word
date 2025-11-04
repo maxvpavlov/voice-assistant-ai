@@ -1,0 +1,386 @@
+#!/usr/bin/env python3
+"""
+edge-wake-word - Voice Assistant CLI Tool
+Train, test, and run wake word detection on edge devices.
+"""
+
+import sys
+import argparse
+import signal
+import time
+from pathlib import Path
+
+# Add src to path for imports
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from voice_assistant import WakeWordDetector, AudioRecorder
+
+
+class EdgeWakeWord:
+    """Main CLI application for edge wake word detection."""
+
+    def __init__(self):
+        self.running = True
+        self.detection_count = 0
+
+    def mode_train(self, args):
+        """
+        Training mode: Record audio samples for custom wake word training.
+        """
+        print("\n" + "="*70)
+        print("🎯 TRAINING MODE - Audio Sample Collection")
+        print("="*70)
+
+        recorder = AudioRecorder(output_dir=args.output_dir)
+
+        try:
+            # Test microphone first
+            if args.test_mic:
+                recorder.test_microphone(duration=3.0)
+
+            # List devices if requested
+            if args.list_devices:
+                recorder.list_devices()
+                return
+
+            # Validate wake word
+            if not args.wake_word:
+                print("\n❌ Error: --wake-word is required for training mode")
+                print("   Example: edge-wake-word train --wake-word 'hey edge'\n")
+                sys.exit(1)
+
+            wake_word = args.wake_word.lower().replace(" ", "_")
+
+            print(f"\n📝 Wake Word: '{args.wake_word}'")
+            print(f"📁 Output Directory: {args.output_dir}")
+            print(f"🎤 Sample Duration: {args.duration}s")
+            print("\n" + "-"*70)
+
+            # Training instructions
+            print("\n📚 TRAINING DATA COLLECTION GUIDE:")
+            print("\n  For best results with openWakeWord training:")
+            print(f"  • Record at least 50-100 positive samples (saying '{args.wake_word}')")
+            print(f"  • Vary your tone, speed, and distance from microphone")
+            print(f"  • Optional: Record negative samples (NOT saying '{args.wake_word}')")
+            print("\n  After collecting samples, use the openWakeWord Colab notebook")
+            print("  to train your custom model:")
+            print("  https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb")
+            print("\n" + "-"*70)
+
+            # Record positive samples
+            print("\n🟢 STEP 1: Positive Samples")
+            print(f"   Say the wake word clearly: '{args.wake_word}'\n")
+
+            recorder.record_batch(
+                wake_word=wake_word,
+                num_samples=args.num_samples,
+                duration=args.duration,
+                sample_type="positive"
+            )
+
+            # Ask about negative samples
+            if args.with_negatives:
+                print("\n🔴 STEP 2: Negative Samples")
+                print(f"   Say anything EXCEPT '{args.wake_word}'\n")
+
+                recorder.record_batch(
+                    wake_word=wake_word,
+                    num_samples=args.num_samples,
+                    duration=args.duration,
+                    sample_type="negative"
+                )
+
+            # Summary
+            print("\n" + "="*70)
+            print("✅ TRAINING DATA COLLECTION COMPLETE!")
+            print("="*70)
+            print(f"\n📁 Your samples are saved in: {args.output_dir}/{wake_word}/")
+            print("\n📖 NEXT STEPS:")
+            print("  1. Review your recordings to ensure quality")
+            print("  2. Open the openWakeWord training Colab notebook:")
+            print("     https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb")
+            print("  3. Upload your samples and follow the training guide")
+            print("  4. Download the trained .tflite or .onnx model")
+            print("  5. Test your model with: edge-wake-word test --model <path>\n")
+
+        except KeyboardInterrupt:
+            print("\n\n⚠️  Training interrupted by user\n")
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n", file=sys.stderr)
+            sys.exit(1)
+        finally:
+            recorder.cleanup()
+
+    def mode_test(self, args):
+        """
+        Test mode: Test wake word detection with visual feedback.
+        """
+        print("\n" + "="*70)
+        print("🧪 TEST MODE - Wake Word Detection Testing")
+        print("="*70)
+
+        try:
+            # Initialize detector
+            detector_args = {
+                "threshold": args.threshold,
+                "on_detection": self._test_callback
+            }
+
+            # Add specific models if provided
+            if args.model:
+                detector_args["wake_words"] = [args.model]
+            elif args.wake_words:
+                detector_args["wake_words"] = args.wake_words
+
+            print("\nInitializing wake word detector...")
+            detector = WakeWordDetector(**detector_args)
+
+            # Show loaded models
+            models = detector.list_available_models()
+            print(f"\n✓ Loaded {len(models)} model(s):")
+            for model in models:
+                print(f"  • {model}")
+
+            print(f"\n⚙️  Detection Threshold: {args.threshold}")
+            print("\n" + "-"*70)
+            print("STATUS: Listening for wake words...")
+            print("TIP: Try different volumes, distances, and pronunciations")
+            print("Press Ctrl+C to exit")
+            print("-"*70 + "\n")
+
+            # Set up signal handler
+            signal.signal(signal.SIGINT, self._signal_handler)
+
+            # Start detection
+            detector.start()
+
+            # Keep running
+            while self.running:
+                time.sleep(0.1)
+
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n", file=sys.stderr)
+            sys.exit(1)
+        finally:
+            if 'detector' in locals():
+                detector.stop()
+            print(f"\n\n📊 Test Results:")
+            print(f"   Total detections: {self.detection_count}")
+            print("   Goodbye! 👋\n")
+
+    def mode_run(self, args):
+        """
+        Run mode: Production wake word detection.
+        """
+        print("\n" + "="*70)
+        print("🚀 RUN MODE - Voice Assistant Active")
+        print("="*70)
+
+        try:
+            # Initialize detector
+            detector_args = {
+                "threshold": args.threshold,
+                "on_detection": self._production_callback
+            }
+
+            if args.wake_words:
+                detector_args["wake_words"] = args.wake_words
+
+            print("\nInitializing voice assistant...")
+            detector = WakeWordDetector(**detector_args)
+
+            models = detector.list_available_models()
+            print(f"✓ Active wake words: {', '.join(models)}")
+            print(f"✓ Detection threshold: {args.threshold}")
+
+            if not args.quiet:
+                print("\n" + "-"*70)
+                print("STATUS: Voice assistant ready")
+                print("-"*70 + "\n")
+
+            # Set up signal handler
+            signal.signal(signal.SIGINT, self._signal_handler)
+
+            # Start detection
+            detector.start()
+
+            # Keep running
+            while self.running:
+                time.sleep(0.1)
+
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n", file=sys.stderr)
+            sys.exit(1)
+        finally:
+            if 'detector' in locals():
+                detector.stop()
+            if not args.quiet:
+                print("\n\nShutting down... Goodbye! 👋\n")
+
+    def _test_callback(self, wake_word: str, confidence: float):
+        """Callback for test mode detections."""
+        self.detection_count += 1
+        print(f"\n{'='*70}")
+        print(f"🎯 DETECTION #{self.detection_count}")
+        print(f"{'='*70}")
+        print(f"  Wake Word: {wake_word}")
+        print(f"  Confidence: {confidence:.2%}")
+        print(f"  Threshold: Passed" if confidence >= 0.5 else "  Threshold: Failed")
+        print(f"{'='*70}\n")
+
+    def _production_callback(self, wake_word: str, confidence: float):
+        """Callback for production mode detections."""
+        self.detection_count += 1
+        print(f"\n🎙️  ACTIVATED! [{wake_word}] (confidence: {confidence:.2%})")
+        print("→ Voice recognition would activate here")
+        print("→ Listening for your command...\n")
+
+    def _signal_handler(self, signum, frame):
+        """Handle Ctrl+C gracefully."""
+        self.running = False
+
+
+def main():
+    """Main entry point for the CLI."""
+
+    # Create main parser
+    parser = argparse.ArgumentParser(
+        prog="edge-wake-word",
+        description="Voice assistant CLI for wake word detection on edge devices",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Train a custom wake word
+  edge-wake-word train --wake-word "hey edge" --num-samples 50
+
+  # Test wake word detection
+  edge-wake-word test
+
+  # Test with specific models
+  edge-wake-word test --wake-words alexa hey_jarvis
+
+  # Run in production mode
+  edge-wake-word run --threshold 0.6
+
+  # Test microphone
+  edge-wake-word train --test-mic --list-devices
+        """
+    )
+
+    # Create subparsers for different modes
+    subparsers = parser.add_subparsers(dest="mode", help="Operation mode")
+
+    # TRAIN mode
+    train_parser = subparsers.add_parser(
+        "train",
+        help="Collect audio samples for custom wake word training"
+    )
+    train_parser.add_argument(
+        "--wake-word",
+        type=str,
+        help="Wake word to train (e.g., 'hey edge')"
+    )
+    train_parser.add_argument(
+        "--num-samples",
+        type=int,
+        default=50,
+        help="Number of samples to record (default: 50)"
+    )
+    train_parser.add_argument(
+        "--duration",
+        type=float,
+        default=2.0,
+        help="Duration of each sample in seconds (default: 2.0)"
+    )
+    train_parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="training_data",
+        help="Output directory for samples (default: training_data)"
+    )
+    train_parser.add_argument(
+        "--with-negatives",
+        action="store_true",
+        help="Also collect negative samples (not saying the wake word)"
+    )
+    train_parser.add_argument(
+        "--test-mic",
+        action="store_true",
+        help="Test microphone before recording"
+    )
+    train_parser.add_argument(
+        "--list-devices",
+        action="store_true",
+        help="List available audio devices and exit"
+    )
+
+    # TEST mode
+    test_parser = subparsers.add_parser(
+        "test",
+        help="Test wake word detection with visual feedback"
+    )
+    test_parser.add_argument(
+        "--model",
+        type=str,
+        help="Path to custom model file (.tflite or .onnx)"
+    )
+    test_parser.add_argument(
+        "--wake-words",
+        nargs="+",
+        help="Specific wake words to test (e.g., alexa hey_jarvis)"
+    )
+    test_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Detection confidence threshold (default: 0.5)"
+    )
+
+    # RUN mode
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run wake word detection in production mode"
+    )
+    run_parser.add_argument(
+        "--wake-words",
+        nargs="+",
+        help="Wake words to detect (default: all available)"
+    )
+    run_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Detection confidence threshold (default: 0.5)"
+    )
+    run_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress status messages"
+    )
+
+    # Parse arguments
+    args = parser.parse_args()
+
+    # Show help if no mode specified
+    if not args.mode:
+        parser.print_help()
+        sys.exit(1)
+
+    # Create app instance
+    app = EdgeWakeWord()
+
+    # Run the appropriate mode
+    if args.mode == "train":
+        app.mode_train(args)
+    elif args.mode == "test":
+        app.mode_test(args)
+    elif args.mode == "run":
+        app.mode_run(args)
+
+
+if __name__ == "__main__":
+    main()

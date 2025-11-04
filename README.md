@@ -1,22 +1,25 @@
 # Voice Assistant - Wake Word Detection & Speech Recognition
 
-A modular voice assistant library designed for Raspberry Pi 5 and macOS. Features wake word detection using openWakeWord and speech recognition capabilities.
+A modular voice assistant library designed for Raspberry Pi 5 and macOS. Features wake word detection using openWakeWord with custom training capabilities and speech recognition.
 
 ## Features
 
 - **Wake Word Detection**: Always-listening wake word detection using openWakeWord
+- **Custom Training**: Record and train your own wake words
 - **Cross-Platform**: Works on both Raspberry Pi 5 and macOS
 - **Low Resource Usage**: Optimized for embedded devices
 - **Multiple Wake Words**: Support for multiple pre-trained wake words
+- **CLI Tool**: Complete command-line interface for training, testing, and running
 - **Extensible**: Modular design for easy extension with speech recognition
 
 ## Current Status
 
-✅ **Phase 1: Wake Word Detection** (Complete)
+✅ **Phase 1: Wake Word Detection & Training** (Complete)
 - openWakeWord integration
 - Audio capture and processing
 - Multi-threaded detection
-- Demo application
+- Audio recording for training data collection
+- Complete CLI tool (`edge-wake-word`)
 
 🚧 **Phase 2: Speech Recognition** (Coming Next)
 - Vosk integration for Raspberry Pi
@@ -57,25 +60,130 @@ source venv/bin/activate  # On macOS/Linux
 pip install -r requirements.txt
 ```
 
-### Running the Demo
+## Using edge-wake-word CLI
+
+The `edge-wake-word` command provides three modes: train, test, and run.
+
+### Test Mode - Try Pre-trained Wake Words
+
+Test with pre-trained wake words like "Alexa" or "Hey Jarvis":
 
 ```bash
-python3 demo.py
+./edge-wake-word test
 ```
 
-The demo will:
-1. Load pre-trained wake word models (downloads on first run)
-2. Start listening for wake words like "Alexa" or "Hey Jarvis"
-3. Print detection events with confidence scores
-4. Show where voice recognition would activate
+Test specific wake words:
+```bash
+./edge-wake-word test --wake-words alexa hey_jarvis
+```
 
-### Available Wake Words
+Adjust detection sensitivity:
+```bash
+./edge-wake-word test --threshold 0.6
+```
 
-The openWakeWord library includes several pre-trained models:
-- `alexa`
-- `hey_jarvis`
-- `hey_mycroft`
-- And more (models downloaded automatically on first use)
+### Train Mode - Create Custom Wake Words
+
+Train your own custom wake word in 3 steps:
+
+**Step 1: Test your microphone**
+```bash
+./edge-wake-word train --test-mic --list-devices
+```
+
+**Step 2: Record training samples**
+```bash
+./edge-wake-word train --wake-word "hey edge" --num-samples 50
+```
+
+This will:
+- Record 50 samples of you saying "hey edge"
+- Save them to `training_data/hey_edge/positive/`
+- Guide you through the recording process
+
+**Step 3: Train your model**
+
+After recording samples, use the openWakeWord training notebook:
+1. Open: https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb
+2. Upload your audio samples
+3. Follow the notebook instructions
+4. Download your trained `.onnx` or `.tflite` model
+
+**Step 4: Test your custom model**
+```bash
+./edge-wake-word test --model path/to/your/model.onnx
+```
+
+### Advanced Training Options
+
+Record with negative samples (improves accuracy):
+```bash
+./edge-wake-word train --wake-word "hey edge" \
+  --num-samples 50 \
+  --with-negatives \
+  --duration 2.5
+```
+
+Customize output location:
+```bash
+./edge-wake-word train --wake-word "hey edge" \
+  --output-dir ./my_training_data \
+  --num-samples 100
+```
+
+### Run Mode - Production Use
+
+Run the voice assistant in production mode:
+
+```bash
+./edge-wake-word run
+```
+
+Run with specific wake words:
+```bash
+./edge-wake-word run --wake-words alexa hey_jarvis
+```
+
+Run with custom threshold (less sensitive, fewer false positives):
+```bash
+./edge-wake-word run --threshold 0.7 --quiet
+```
+
+## CLI Reference
+
+### Train Mode
+```bash
+edge-wake-word train [OPTIONS]
+```
+
+**Options:**
+- `--wake-word TEXT`: Wake word to train (required)
+- `--num-samples INT`: Number of samples to record (default: 50)
+- `--duration FLOAT`: Duration of each sample in seconds (default: 2.0)
+- `--output-dir PATH`: Output directory for samples (default: training_data)
+- `--with-negatives`: Also collect negative samples
+- `--test-mic`: Test microphone before recording
+- `--list-devices`: List available audio devices
+
+### Test Mode
+```bash
+edge-wake-word test [OPTIONS]
+```
+
+**Options:**
+- `--model PATH`: Path to custom model file (.tflite or .onnx)
+- `--wake-words WORD [WORD ...]`: Specific wake words to test
+- `--threshold FLOAT`: Detection confidence threshold (default: 0.5)
+
+### Run Mode
+```bash
+edge-wake-word run [OPTIONS]
+```
+
+**Options:**
+- `--wake-words WORD [WORD ...]`: Wake words to detect
+- `--threshold FLOAT`: Detection confidence threshold (default: 0.5)
+- `--quiet`: Suppress status messages
 
 ## Project Structure
 
@@ -84,16 +192,20 @@ voice-activation-and-recognition/
 ├── src/
 │   └── voice_assistant/
 │       ├── __init__.py              # Package initialization
-│       └── wake_word_detector.py    # Wake word detection module
+│       ├── wake_word_detector.py    # Wake word detection module
+│       └── audio_recorder.py        # Audio recording for training
 ├── tests/                           # Unit tests (future)
-├── demo.py                          # Demo application
+├── edge-wake-word                   # Main CLI tool
+├── demo.py                          # Simple demo (legacy)
 ├── requirements.txt                 # Python dependencies
 └── README.md                        # This file
 ```
 
-## Usage
+## Python API Usage
 
-### Basic Wake Word Detection
+You can also use the library programmatically:
+
+### Wake Word Detection
 
 ```python
 from voice_assistant import WakeWordDetector
@@ -116,7 +228,26 @@ detector.start()
 detector.stop()
 ```
 
-### Using Context Manager
+### Audio Recording for Training
+
+```python
+from voice_assistant import AudioRecorder
+
+recorder = AudioRecorder(output_dir="my_training_data")
+
+# Record a batch of samples
+recorder.record_batch(
+    wake_word="hey_edge",
+    num_samples=50,
+    duration=2.0,
+    sample_type="positive"
+)
+
+# Test microphone
+recorder.test_microphone(duration=3.0)
+```
+
+### Context Manager
 
 ```python
 with WakeWordDetector(threshold=0.5, on_detection=callback) as detector:
@@ -127,24 +258,24 @@ with WakeWordDetector(threshold=0.5, on_detection=callback) as detector:
     # Detector automatically stops
 ```
 
-### Specific Wake Words
-
-```python
-# Only load specific wake words
-detector = WakeWordDetector(
-    wake_words=["alexa", "hey_jarvis"],
-    threshold=0.6
-)
-```
-
 ## Configuration
 
 ### Detection Threshold
 
-The `threshold` parameter controls sensitivity:
-- **Lower (0.3-0.4)**: More sensitive, may have false positives
-- **Medium (0.5)**: Balanced (recommended)
-- **Higher (0.6-0.8)**: Less sensitive, fewer false positives
+The `--threshold` parameter controls sensitivity:
+- **0.3-0.4**: More sensitive, may have false positives
+- **0.5**: Balanced (recommended default)
+- **0.6-0.8**: Less sensitive, fewer false positives
+
+### Available Pre-trained Wake Words
+
+The openWakeWord library includes:
+- `alexa`
+- `hey_jarvis`
+- `hey_mycroft`
+- `hey_rhasspy`
+- `ok_nabu`
+- And more (models downloaded automatically on first use)
 
 ### Audio Parameters
 
@@ -152,6 +283,21 @@ Default settings (optimized for openWakeWord):
 - Sample Rate: 16kHz
 - Chunk Size: 1280 samples (80ms)
 - Format: 16-bit PCM
+- Channels: Mono
+
+## Training Best Practices
+
+For best results when training custom wake words:
+
+1. **Record Enough Samples**: 50-100 minimum, more is better
+2. **Vary Conditions**:
+   - Different volumes (quiet, normal, loud)
+   - Different distances from microphone
+   - Different speaking speeds
+   - Different tones/inflections
+3. **Quality Over Quantity**: Ensure clear recordings without clipping
+4. **Negative Samples**: Optional but helpful for reducing false positives
+5. **Background Noise**: Record in the environment where you'll use it
 
 ## Troubleshooting
 
@@ -177,24 +323,45 @@ If models fail to download, check your internet connection. Models are cached in
 - macOS: `~/.cache/openwakeword/`
 - Linux: `~/.cache/openwakeword/`
 
+### Microphone Not Working
+
+List available devices:
+```bash
+./edge-wake-word train --list-devices
+```
+
+Test your microphone:
+```bash
+./edge-wake-word train --test-mic
+```
+
+### Poor Detection Accuracy
+
+- Lower the threshold: `--threshold 0.4`
+- Ensure you're using the correct wake word pronunciation
+- Record more training samples with varied conditions
+- Check microphone placement and quality
+
 ## Performance
 
 ### Raspberry Pi 5
 - Can run 15-20 wake word models simultaneously
 - ~5-10% CPU usage per model
 - Low latency (<100ms detection time)
+- Recommended for production deployment
 
 ### macOS
 - Negligible CPU usage on modern Macs
 - Real-time performance with multiple models
+- Great for development and testing
 
 ## Next Steps
 
 1. **Add Speech Recognition**: Integrate Vosk for Raspberry Pi and Whisper for macOS
 2. **Command Processing**: Build command parsing and execution pipeline
-3. **Custom Wake Words**: Add support for training custom wake words
-4. **Audio Feedback**: Add beep or LED indication on wake word detection
-5. **Web Interface**: Optional web UI for configuration and monitoring
+3. **Audio Feedback**: Add beep or LED indication on wake word detection
+4. **Web Interface**: Optional web UI for configuration and monitoring
+5. **Home Assistant Integration**: Connect with home automation systems
 
 ## Contributing
 
@@ -209,7 +376,8 @@ This project uses the following open-source libraries:
 ## Resources
 
 - [openWakeWord GitHub](https://github.com/dscripka/openWakeWord)
-- [openWakeWord Documentation](https://github.com/dscripka/openWakeWord/blob/main/docs/README.md)
+- [openWakeWord Training Notebook](https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb)
+- [Home Assistant Wake Words Collection](https://github.com/fwartner/home-assistant-wakewords-collection)
 - [PyAudio Documentation](https://people.csail.mit.edu/hubert/pyaudio/docs/)
 
 ## Support
@@ -217,4 +385,30 @@ This project uses the following open-source libraries:
 For issues or questions:
 1. Check the troubleshooting section above
 2. Review openWakeWord documentation
-3. Open an issue in this repository
+3. Test with `./edge-wake-word train --test-mic`
+4. Open an issue in this repository
+
+## Examples
+
+### Quick Test
+```bash
+# Install and test in under 5 minutes
+pip install -r requirements.txt
+./edge-wake-word test
+# Say "Alexa" or "Hey Jarvis"
+```
+
+### Train Custom Wake Word
+```bash
+# Full training workflow
+./edge-wake-word train --wake-word "computer activate" --num-samples 100 --with-negatives
+# Upload samples to Colab notebook for training
+# Download trained model
+./edge-wake-word test --model my_model.onnx
+```
+
+### Production Deployment
+```bash
+# Run on Raspberry Pi with custom settings
+./edge-wake-word run --wake-words alexa --threshold 0.65 --quiet
+```

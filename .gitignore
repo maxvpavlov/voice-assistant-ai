@@ -38,7 +38,8 @@ ENV/
 .cache/
 *.onnx
 
-# Audio files
+# Audio files and training data
+training_data/
 *.wav
 *.mp3
 *.flac
