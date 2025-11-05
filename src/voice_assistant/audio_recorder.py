@@ -146,30 +146,38 @@ class AudioRecorder:
 
         successful_recordings = 0
 
-        for i in range(num_samples):
-            print(f"\n[Sample {i+1}/{num_samples}]")
+        # Temporarily change output_dir to sample_dir for this batch
+        original_output_dir = self.output_dir
+        self.output_dir = sample_dir
 
-            try:
-                filename = f"{sample_type}_{i+1:04d}.wav"
-                self.record_sample(
-                    duration=duration,
-                    filename=filename,
-                    countdown=2
-                )
+        try:
+            for i in range(num_samples):
+                print(f"\n[Sample {i+1}/{num_samples}]")
 
-                successful_recordings += 1
+                try:
+                    filename = f"{sample_type}_{i+1:04d}.wav"
+                    self.record_sample(
+                        duration=duration,
+                        filename=filename,
+                        countdown=2
+                    )
 
-                # Pause between recordings
-                if i < num_samples - 1:
-                    print("\nGet ready for next sample...")
-                    time.sleep(1.5)
+                    successful_recordings += 1
 
-            except KeyboardInterrupt:
-                print("\n\n⚠️  Recording interrupted by user")
-                break
-            except Exception as e:
-                logger.error(f"Error recording sample {i+1}: {e}")
-                print(f"❌ Failed to record sample {i+1}")
+                    # Pause between recordings
+                    if i < num_samples - 1:
+                        print("\nGet ready for next sample...")
+                        time.sleep(1.5)
+
+                except KeyboardInterrupt:
+                    print("\n\n⚠️  Recording interrupted by user")
+                    break
+                except Exception as e:
+                    logger.error(f"Error recording sample {i+1}: {e}")
+                    print(f"❌ Failed to record sample {i+1}")
+        finally:
+            # Restore original output_dir
+            self.output_dir = original_output_dir
 
         print(f"\n{'='*70}")
         print(f"✓ Completed: {successful_recordings}/{num_samples} samples recorded")
