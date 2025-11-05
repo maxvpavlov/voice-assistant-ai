@@ -49,14 +49,24 @@ git clone <repository-url>
 cd voice-activation-and-recognition
 ```
 
-2. Create a virtual environment (recommended):
+2. **Quick Setup** (Recommended):
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On macOS/Linux
+source setup-and-enter-venv.sh
 ```
 
-3. Install dependencies:
+This will automatically:
+- Install system dependencies (PortAudio)
+- Create a virtual environment
+- Install Python dependencies
+- Activate the environment
+
+**Alternative - Manual Setup:**
 ```bash
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
@@ -393,7 +403,7 @@ For issues or questions:
 ### Quick Test
 ```bash
 # Install and test in under 5 minutes
-pip install -r requirements.txt
+source setup-and-enter-venv.sh
 ./edge-wake-word test
 # Say "Alexa" or "Hey Jarvis"
 ```
