@@ -59,7 +59,8 @@ class EdgeWakeWord:
             # Training instructions
             print("\n📚 TRAINING DATA COLLECTION GUIDE:")
             print("\n  For best results with openWakeWord training:")
-            print(f"  • Record at least 50-100 positive samples (saying '{args.wake_word}')")
+            print(f"  • Default: 5 samples for quick testing/demo")
+            print(f"  • Production: Use --num-samples 50-100 for better accuracy")
             print(f"  • Vary your tone, speed, and distance from microphone")
             print(f"  • Optional: Record negative samples (NOT saying '{args.wake_word}')")
             print("\n  After collecting samples, use the openWakeWord Colab notebook")
@@ -255,7 +256,7 @@ def main():
         epilog="""
 Examples:
   # Train a custom wake word
-  edge-wake-word train --wake-word "hey edge" --num-samples 50
+  edge-wake-word train --wake-word "hey edge"
 
   # Test wake word detection
   edge-wake-word test
@@ -287,8 +288,8 @@ Examples:
     train_parser.add_argument(
         "--num-samples",
         type=int,
-        default=50,
-        help="Number of samples to record (default: 50)"
+        default=5,
+        help="Number of samples to record (default: 5, use 50-100 for production)"
     )
     train_parser.add_argument(
         "--duration",

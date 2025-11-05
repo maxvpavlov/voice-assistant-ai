@@ -103,13 +103,14 @@ Train your own custom wake word in 3 steps:
 
 **Step 2: Record training samples**
 ```bash
-./edge-wake-word train --wake-word "hey edge" --num-samples 50
+./edge-wake-word train --wake-word "hey edge"
 ```
 
 This will:
-- Record 50 samples of you saying "hey edge"
+- Record 5 samples of you saying "hey edge" (default, quick demo)
 - Save them to `training_data/hey_edge/positive/`
 - Guide you through the recording process
+- For production: add `--num-samples 50` for better accuracy
 
 **Step 3: Train your model**
 
@@ -168,7 +169,7 @@ edge-wake-word train [OPTIONS]
 
 **Options:**
 - `--wake-word TEXT`: Wake word to train (required)
-- `--num-samples INT`: Number of samples to record (default: 50)
+- `--num-samples INT`: Number of samples to record (default: 5, use 50-100 for production)
 - `--duration FLOAT`: Duration of each sample in seconds (default: 2.0)
 - `--output-dir PATH`: Output directory for samples (default: training_data)
 - `--with-negatives`: Also collect negative samples
@@ -299,7 +300,9 @@ Default settings (optimized for openWakeWord):
 
 For best results when training custom wake words:
 
-1. **Record Enough Samples**: 50-100 minimum, more is better
+1. **Record Enough Samples**:
+   - Quick demo/testing: 5 samples (default)
+   - Production quality: 50-100 samples minimum, more is better
 2. **Vary Conditions**:
    - Different volumes (quiet, normal, loud)
    - Different distances from microphone
