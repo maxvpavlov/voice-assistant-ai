@@ -38,11 +38,13 @@ ENV/
 .cache/
 *.onnx
 
-# Audio files and training data
-training_data/
-*.wav
+# Audio files (but allow training_data samples)
 *.mp3
 *.flac
+
+# Allow training_data directory and WAV files for testing
+!training_data/
+!training_data/**/*.wav
 
 # Logs
 *.log
