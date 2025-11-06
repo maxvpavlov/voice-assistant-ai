@@ -24,12 +24,42 @@ try:
     models_dir.mkdir(parents=True, exist_ok=True)
     print(f"✓ Created models directory: {models_dir}")
 
-    # Model to download
+    # Try using the built-in download utility first
+    print("\nAttempting to download models using openwakeword utility...")
+    print("-"*70)
+
+    try:
+        from openwakeword.utils import download_models
+        print("Calling openwakeword.utils.download_models()...")
+        download_models()
+
+        # Check if models were downloaded
+        models = list(models_dir.glob('*.onnx'))
+        if models:
+            print("\n✓ Models downloaded successfully!")
+            print(f"\nAvailable models in {models_dir}:")
+            for f in sorted(models):
+                size_mb = f.stat().st_size / (1024*1024)
+                print(f"  ✓ {f.name} ({size_mb:.1f} MB)")
+
+            print("\n" + "="*70)
+            print("✅ SUCCESS! You can now run:")
+            print("   ./edge-wake-word train-local --wake-word \"hey edge\"")
+            print("="*70)
+            sys.exit(0)
+        else:
+            print("⚠️  download_models() completed but no models found")
+            print("Trying manual download from Hugging Face...\n")
+    except Exception as e:
+        print(f"⚠️  Utility download failed: {e}")
+        print("Trying manual download from Hugging Face...\n")
+
+    # Model to download from Hugging Face
     model_name = "alexa_v0.1.onnx"
-    model_url = f"https://github.com/dscripka/openWakeWord/raw/main/openwakeword/resources/models/{model_name}"
+    model_url = f"https://huggingface.co/davidscripka/openwakeword/resolve/main/{model_name}"
     output_path = models_dir / model_name
 
-    print(f"\nDownloading {model_name}...")
+    print(f"Downloading {model_name}...")
     print(f"From: {model_url}")
     print(f"To: {output_path}")
     print()
