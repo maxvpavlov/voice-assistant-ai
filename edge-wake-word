@@ -47,7 +47,7 @@ class EdgeWakeWord:
             if not args.wake_word:
                 print("\n❌ Error: --wake-word is required for training mode")
                 print("   Example: edge-wake-word train --wake-word 'hey edge'\n")
-                sys.exit(1)
+                return
 
             wake_word = args.wake_word.lower().replace(" ", "_")
 
@@ -108,7 +108,6 @@ class EdgeWakeWord:
             print("\n\n⚠️  Training interrupted by user\n")
         except Exception as e:
             print(f"\n❌ Error: {e}\n", file=sys.stderr)
-            sys.exit(1)
         finally:
             recorder.cleanup()
 
@@ -136,7 +135,7 @@ class EdgeWakeWord:
                 else:
                     print("\n❌ No training data found.")
                     print("   Run: edge-wake-word train --wake-word \"your phrase\" first\n")
-                sys.exit(1)
+                return
 
             # Get sample counts
             counts = trainer.get_sample_counts(args.wake_word)
@@ -144,7 +143,7 @@ class EdgeWakeWord:
             if counts['positive'] == 0:
                 print(f"\n❌ No training samples found for '{args.wake_word}'")
                 print(f"   Run: edge-wake-word train --wake-word \"{args.wake_word}\" first\n")
-                sys.exit(1)
+                return
 
             print(f"\n📝 Wake Word: '{args.wake_word}'")
             print(f"📊 Training Data:")
@@ -185,7 +184,6 @@ class EdgeWakeWord:
             print(f"\n❌ Error: {e}\n", file=sys.stderr)
             import traceback
             traceback.print_exc()
-            sys.exit(1)
 
     def mode_test(self, args):
         """
@@ -238,7 +236,6 @@ class EdgeWakeWord:
             pass
         except Exception as e:
             print(f"\n❌ Error: {e}\n", file=sys.stderr)
-            sys.exit(1)
         finally:
             if 'detector' in locals():
                 detector.stop()
@@ -259,7 +256,7 @@ class EdgeWakeWord:
             if not args.wake_word:
                 print("\n❌ Error: --wake-word is required")
                 print("   Example: edge-wake-word test-custom --wake-word \"hey edge\" --model path/to/model.pkl\n")
-                sys.exit(1)
+                return
 
             if not args.model:
                 # Try to find the model automatically
@@ -273,7 +270,7 @@ class EdgeWakeWord:
                     print("\n❌ Error: --model is required (model not found automatically)")
                     print(f"   Expected location: {auto_model_path}")
                     print("   Or specify: --model path/to/your/model.pkl\n")
-                    sys.exit(1)
+                    return
 
             print(f"\n📝 Wake Word: '{args.wake_word}'")
             print(f"📁 Verifier Model: {args.model}")
@@ -317,7 +314,6 @@ class EdgeWakeWord:
             print(f"\n❌ Error: {e}\n", file=sys.stderr)
             import traceback
             traceback.print_exc()
-            sys.exit(1)
         finally:
             if 'detector' in locals():
                 detector.stop()
@@ -374,7 +370,6 @@ class EdgeWakeWord:
             pass
         except Exception as e:
             print(f"\n❌ Error: {e}\n", file=sys.stderr)
-            sys.exit(1)
         finally:
             if 'detector' in locals():
                 detector.stop()
@@ -606,7 +601,7 @@ Examples:
     # Show help if no mode specified
     if not args.mode:
         parser.print_help()
-        sys.exit(1)
+        return
 
     # Create app instance
     app = EdgeWakeWord()
@@ -625,4 +620,11 @@ Examples:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\nInterrupted by user. Exiting gracefully...\n")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n❌ Unexpected error: {e}\n", file=sys.stderr)
+        sys.exit(1)
