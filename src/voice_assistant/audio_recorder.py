@@ -5,12 +5,15 @@ Handles recording audio samples for wake word training.
 
 import logging
 import numpy as np
-import pyaudio
 import wave
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 from datetime import datetime
+
+# Lazy import of pyaudio - only needed when actually recording
+if TYPE_CHECKING:
+    import pyaudio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,7 +27,7 @@ class AudioRecorder:
     # Audio configuration (matching wake word detector settings)
     SAMPLE_RATE = 16000
     CHANNELS = 1
-    FORMAT = pyaudio.paInt16
+    # FORMAT will be set when pyaudio is imported
     CHUNK_SIZE = 1024
 
     def __init__(self, output_dir: str = "training_data"):
@@ -34,6 +37,17 @@ class AudioRecorder:
         Args:
             output_dir: Directory to save recorded audio files
         """
+        # Import pyaudio only when actually needed
+        try:
+            import pyaudio
+            self.pyaudio = pyaudio
+            self.FORMAT = pyaudio.paInt16
+        except ImportError:
+            raise ImportError(
+                "PyAudio is required for audio recording. "
+                "Please install it: pip install pyaudio"
+            )
+
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

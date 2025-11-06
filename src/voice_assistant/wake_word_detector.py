@@ -5,19 +5,21 @@ Uses openWakeWord for detecting activation phrases.
 
 import logging
 import numpy as np
-from typing import Callable, Optional, List
+from typing import Callable, Optional, List, TYPE_CHECKING
 import threading
 import queue
 
 try:
     from openwakeword.model import Model
-    import pyaudio
 except ImportError as e:
     raise ImportError(
-        f"Required dependencies not installed: {e}. "
+        f"openwakeword not installed: {e}. "
         "Please run: pip install -r requirements.txt"
     )
 
+# Lazy import of pyaudio - only needed when actually using WakeWordDetector
+if TYPE_CHECKING:
+    import pyaudio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,7 +37,7 @@ class WakeWordDetector:
     CHUNK_SIZE = 1280  # 80ms at 16kHz (recommended by openWakeWord)
     SAMPLE_RATE = 16000
     CHANNELS = 1
-    FORMAT = pyaudio.paInt16
+    # FORMAT will be set when pyaudio is imported
 
     def __init__(
         self,
@@ -58,6 +60,17 @@ class WakeWordDetector:
                                    Example: {"alexa": "path/to/verifier.pkl"}
             custom_verifier_threshold: Threshold for custom verifier activation (default: 0.3)
         """
+        # Import pyaudio only when actually needed
+        try:
+            import pyaudio
+            self.pyaudio = pyaudio
+            self.FORMAT = pyaudio.paInt16
+        except ImportError:
+            raise ImportError(
+                "PyAudio is required for wake word detection. "
+                "Please install it: pip install pyaudio"
+            )
+
         self.wake_words = wake_words
         self.threshold = threshold
         self.on_detection = on_detection
@@ -78,7 +91,7 @@ class WakeWordDetector:
 
         # Audio stream
         self.audio = pyaudio.PyAudio()
-        self.stream: Optional[pyaudio.Stream] = None
+        self.stream = None
 
         # Threading
         self.is_running = False
@@ -140,7 +153,7 @@ class WakeWordDetector:
             logger.warning(f"Audio callback status: {status}")
 
         self.audio_queue.put(in_data)
-        return (None, pyaudio.paContinue)
+        return (None, self.pyaudio.paContinue)
 
     def _detection_loop(self):
         """Main detection loop running in background thread."""
