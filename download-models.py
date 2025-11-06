@@ -46,7 +46,7 @@ try:
             print("✅ SUCCESS! You can now run:")
             print("   ./edge-wake-word train-local --wake-word \"hey edge\"")
             print("="*70)
-            sys.exit(0)
+            return
         else:
             print("⚠️  download_models() completed but no models found")
             print("Trying manual download from Hugging Face...\n")
@@ -94,7 +94,6 @@ try:
             print("="*70)
         else:
             print("❌ Download failed - file not found")
-            sys.exit(1)
 
     except Exception as e:
         print(f"\n❌ Download failed: {e}")
@@ -128,15 +127,12 @@ try:
 
         except ImportError:
             print("requests library not available. Please install: pip install requests")
-            sys.exit(1)
         except Exception as e2:
             print(f"❌ Alternative method also failed: {e2}")
             print("\nManual download instructions:")
             print(f"1. Download from: {model_url}")
             print(f"2. Save to: {output_path}")
-            sys.exit(1)
 
 except ImportError as e:
     print(f"Error: {e}")
     print("Please run: pip install openwakeword")
-    sys.exit(1)
