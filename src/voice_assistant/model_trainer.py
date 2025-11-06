@@ -107,8 +107,10 @@ class ModelTrainer:
 
         # Train the verifier model
         try:
-            # Model files are named like "alexa_v0.1.onnx", not "alexa.onnx"
-            model_name = f"{base_model}_v0.1.onnx"
+            # Model name should be just the base name without extension
+            # The inference_framework parameter handles ONNX vs tflite selection
+            # Files are named like "alexa_v0.1.onnx" but registry key is "alexa_v0.1"
+            model_name = f"{base_model}_v0.1"
 
             train_custom_verifier(
                 positive_reference_clips=positive_clips,
