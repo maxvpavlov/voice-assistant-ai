@@ -13,7 +13,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
-from voice_assistant import WakeWordDetector, AudioRecorder
+from voice_assistant import WakeWordDetector, AudioRecorder, ModelTrainer
 
 
 class EdgeWakeWord:
@@ -112,6 +112,81 @@ class EdgeWakeWord:
         finally:
             recorder.cleanup()
 
+    def mode_train_local(self, args):
+        """
+        Local training mode: Train custom verifier model using recorded samples.
+        """
+        print("\n" + "="*70)
+        print("🎓 LOCAL TRAINING MODE - Custom Verifier Model")
+        print("="*70)
+
+        trainer = ModelTrainer(training_data_dir=args.data_dir)
+
+        try:
+            # Validate wake word
+            if not args.wake_word:
+                # List available wake words
+                available = trainer.list_available_wake_words()
+                if available:
+                    print("\n📁 Available wake words with training data:")
+                    for ww in available:
+                        counts = trainer.get_sample_counts(ww)
+                        print(f"  • {ww} ({counts['positive']} positive, {counts['negative']} negative)")
+                    print("\nUsage: edge-wake-word train-local --wake-word <name>")
+                else:
+                    print("\n❌ No training data found.")
+                    print("   Run: edge-wake-word train --wake-word \"your phrase\" first\n")
+                sys.exit(1)
+
+            # Get sample counts
+            counts = trainer.get_sample_counts(args.wake_word)
+
+            if counts['positive'] == 0:
+                print(f"\n❌ No training samples found for '{args.wake_word}'")
+                print(f"   Run: edge-wake-word train --wake-word \"{args.wake_word}\" first\n")
+                sys.exit(1)
+
+            print(f"\n📝 Wake Word: '{args.wake_word}'")
+            print(f"📊 Training Data:")
+            print(f"   • Positive samples: {counts['positive']}")
+            print(f"   • Negative samples: {counts['negative']}")
+            print(f"🎯 Base Model: {args.base_model}")
+            print(f"⚙️  Verifier Threshold: {args.verifier_threshold}")
+
+            if counts['positive'] < 3:
+                print(f"\n⚠️  Warning: Only {counts['positive']} positive samples.")
+                print("   Minimum 3-5 samples recommended for best results.")
+
+            print("\n" + "-"*70)
+            print("Starting training...")
+            print("-"*70 + "\n")
+
+            # Train the model
+            model_path = trainer.train_verifier(
+                wake_word=args.wake_word,
+                base_model=args.base_model,
+                output_path=args.output if args.output else None,
+                verifier_threshold=args.verifier_threshold
+            )
+
+            # Summary
+            print("\n" + "="*70)
+            print("✅ TRAINING COMPLETE!")
+            print("="*70)
+            print(f"\n📁 Model saved to: {model_path}")
+            print("\n📖 NEXT STEPS:")
+            print(f"  Test your model:")
+            print(f"    edge-wake-word test-custom --wake-word \"{args.wake_word}\" \\")
+            print(f"      --model \"{model_path}\" \\")
+            print(f"      --base-model {args.base_model}")
+            print()
+
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+
     def mode_test(self, args):
         """
         Test mode: Test wake word detection with visual feedback.
@@ -169,6 +244,90 @@ class EdgeWakeWord:
                 detector.stop()
             print(f"\n\n📊 Test Results:")
             print(f"   Total detections: {self.detection_count}")
+            print("   Goodbye! 👋\n")
+
+    def mode_test_custom(self, args):
+        """
+        Test custom verifier model mode: Test locally-trained custom wake word.
+        """
+        print("\n" + "="*70)
+        print("🎯 CUSTOM MODEL TEST - Testing Your Trained Wake Word")
+        print("="*70)
+
+        try:
+            # Validate inputs
+            if not args.wake_word:
+                print("\n❌ Error: --wake-word is required")
+                print("   Example: edge-wake-word test-custom --wake-word \"hey edge\" --model path/to/model.pkl\n")
+                sys.exit(1)
+
+            if not args.model:
+                # Try to find the model automatically
+                wake_word_normalized = args.wake_word.lower().replace(" ", "_")
+                auto_model_path = Path(args.data_dir) / wake_word_normalized / "models" / f"{wake_word_normalized}_verifier.pkl"
+
+                if auto_model_path.exists():
+                    args.model = str(auto_model_path)
+                    print(f"\n✓ Auto-detected model: {args.model}")
+                else:
+                    print("\n❌ Error: --model is required (model not found automatically)")
+                    print(f"   Expected location: {auto_model_path}")
+                    print("   Or specify: --model path/to/your/model.pkl\n")
+                    sys.exit(1)
+
+            print(f"\n📝 Wake Word: '{args.wake_word}'")
+            print(f"📁 Verifier Model: {args.model}")
+            print(f"🎯 Base Model: {args.base_model}")
+            print(f"⚙️  Verifier Threshold: {args.verifier_threshold}")
+
+            # Initialize detector with custom verifier
+            detector_args = {
+                "wake_words": [args.base_model],
+                "threshold": args.threshold,
+                "on_detection": self._test_callback,
+                "custom_verifier_models": {args.base_model: args.model},
+                "custom_verifier_threshold": args.verifier_threshold
+            }
+
+            print("\nInitializing wake word detector with custom verifier...")
+            detector = WakeWordDetector(**detector_args)
+
+            print(f"\n✓ Custom verifier loaded successfully!")
+
+            print("\n" + "-"*70)
+            print("STATUS: Listening for your custom wake word...")
+            print(f"SAY: '{args.wake_word}'")
+            print("TIP: Try the same tone/volume you used during recording")
+            print("Press Ctrl+C to exit")
+            print("-"*70 + "\n")
+
+            # Set up signal handler
+            signal.signal(signal.SIGINT, self._signal_handler)
+
+            # Start detection
+            detector.start()
+
+            # Keep running
+            while self.running:
+                time.sleep(0.1)
+
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            print(f"\n❌ Error: {e}\n", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+        finally:
+            if 'detector' in locals():
+                detector.stop()
+            print(f"\n\n📊 Test Results:")
+            print(f"   Total detections: {self.detection_count}")
+            if self.detection_count == 0:
+                print("\n💡 Tips if not detecting:")
+                print("   • Try lowering --verifier-threshold (default: 0.3)")
+                print("   • Record more training samples")
+                print("   • Ensure similar recording conditions (distance, volume)")
             print("   Goodbye! 👋\n")
 
     def mode_run(self, args):
@@ -255,14 +414,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Train a custom wake word
-  edge-wake-word train --wake-word "hey edge"
-
-  # Test wake word detection
+  # Test pre-trained wake words
   edge-wake-word test
 
-  # Test with specific models
-  edge-wake-word test --wake-words alexa hey_jarvis
+  # Record samples for custom wake word
+  edge-wake-word train --wake-word "hey edge"
+
+  # Train model locally with recorded samples
+  edge-wake-word train-local --wake-word "hey edge"
+
+  # Test your custom trained model
+  edge-wake-word test-custom --wake-word "hey edge"
 
   # Run in production mode
   edge-wake-word run --threshold 0.6
@@ -317,6 +479,81 @@ Examples:
         "--list-devices",
         action="store_true",
         help="List available audio devices and exit"
+    )
+
+    # TRAIN-LOCAL mode
+    train_local_parser = subparsers.add_parser(
+        "train-local",
+        help="Train custom verifier model locally using recorded samples"
+    )
+    train_local_parser.add_argument(
+        "--wake-word",
+        type=str,
+        help="Wake word to train (must have recorded samples)"
+    )
+    train_local_parser.add_argument(
+        "--base-model",
+        type=str,
+        default="alexa",
+        help="Base openWakeWord model to use (default: alexa)"
+    )
+    train_local_parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="training_data",
+        help="Training data directory (default: training_data)"
+    )
+    train_local_parser.add_argument(
+        "--output",
+        type=str,
+        help="Custom output path for the model (optional)"
+    )
+    train_local_parser.add_argument(
+        "--verifier-threshold",
+        type=float,
+        default=0.3,
+        help="Verifier activation threshold (default: 0.3)"
+    )
+
+    # TEST-CUSTOM mode
+    test_custom_parser = subparsers.add_parser(
+        "test-custom",
+        help="Test locally-trained custom wake word"
+    )
+    test_custom_parser.add_argument(
+        "--wake-word",
+        type=str,
+        required=True,
+        help="Wake word to test (e.g., 'hey edge')"
+    )
+    test_custom_parser.add_argument(
+        "--model",
+        type=str,
+        help="Path to trained verifier model (.pkl file, auto-detected if not specified)"
+    )
+    test_custom_parser.add_argument(
+        "--base-model",
+        type=str,
+        default="alexa",
+        help="Base openWakeWord model used during training (default: alexa)"
+    )
+    test_custom_parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="training_data",
+        help="Training data directory for auto-detection (default: training_data)"
+    )
+    test_custom_parser.add_argument(
+        "--threshold",
+        type=float,
+        default=0.5,
+        help="Base model detection threshold (default: 0.5)"
+    )
+    test_custom_parser.add_argument(
+        "--verifier-threshold",
+        type=float,
+        default=0.3,
+        help="Verifier confidence threshold (default: 0.3)"
     )
 
     # TEST mode
@@ -377,8 +614,12 @@ Examples:
     # Run the appropriate mode
     if args.mode == "train":
         app.mode_train(args)
+    elif args.mode == "train-local":
+        app.mode_train_local(args)
     elif args.mode == "test":
         app.mode_test(args)
+    elif args.mode == "test-custom":
+        app.mode_test_custom(args)
     elif args.mode == "run":
         app.mode_run(args)
 

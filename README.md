@@ -19,6 +19,7 @@ A modular voice assistant library designed for Raspberry Pi 5 and macOS. Feature
 - Audio capture and processing
 - Multi-threaded detection
 - Audio recording for training data collection
+- **Local model training** - Train custom wake words on M4 Mac or Raspberry Pi!
 - Complete CLI tool (`edge-wake-word`)
 
 🚧 **Phase 2: Speech Recognition** (Coming Next)
@@ -112,17 +113,25 @@ This will:
 - Guide you through the recording process
 - For production: add `--num-samples 50` for better accuracy
 
-**Step 3: Train your model**
+**Step 3: Train your model locally (NEW!)**
+```bash
+./edge-wake-word train-local --wake-word "hey edge"
+```
 
-After recording samples, use the openWakeWord training notebook:
-1. Open: https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb
-2. Upload your audio samples
-3. Follow the notebook instructions
-4. Download your trained `.onnx` or `.tflite` model
+This will:
+- Train a custom verifier model using your recorded samples
+- Works entirely locally on your Mac (M4, M1, Intel) or Raspberry Pi - no cloud needed!
+- Takes just a few seconds to train
+- Save the model to `training_data/hey_edge/models/hey_edge_verifier.pkl`
 
 **Step 4: Test your custom model**
 ```bash
-./edge-wake-word test --model path/to/your/model.onnx
+./edge-wake-word test-custom --wake-word "hey edge"
+```
+
+The model path is auto-detected, or you can specify it manually:
+```bash
+./edge-wake-word test-custom --wake-word "hey edge" --model path/to/model.pkl
 ```
 
 ### Advanced Training Options
@@ -175,6 +184,42 @@ edge-wake-word train [OPTIONS]
 - `--with-negatives`: Also collect negative samples
 - `--test-mic`: Test microphone before recording
 - `--list-devices`: List available audio devices
+
+### Train-Local Mode (NEW!)
+```bash
+edge-wake-word train-local [OPTIONS]
+```
+
+Train a custom verifier model locally using your recorded samples.
+
+**Options:**
+- `--wake-word TEXT`: Wake word to train (must have recorded samples)
+- `--base-model TEXT`: Base openWakeWord model to use (default: alexa)
+- `--data-dir PATH`: Training data directory (default: training_data)
+- `--output PATH`: Custom output path for the model (optional)
+- `--verifier-threshold FLOAT`: Verifier activation threshold (default: 0.3)
+
+**How it works:**
+- Uses openWakeWord's Custom Verifier approach
+- Trains a lightweight personalized model on top of a base model
+- Runs entirely on CPU (M4 Mac, Raspberry Pi, etc.)
+- Training takes just seconds with 5-10 samples
+- Model is speaker-specific (works best for the person who recorded samples)
+
+### Test-Custom Mode
+```bash
+edge-wake-word test-custom [OPTIONS]
+```
+
+Test your locally-trained custom wake word model.
+
+**Options:**
+- `--wake-word TEXT`: Wake word to test (required)
+- `--model PATH`: Path to trained verifier model (.pkl file, auto-detected if not specified)
+- `--base-model TEXT`: Base model used during training (default: alexa)
+- `--data-dir PATH`: Training data directory for auto-detection (default: training_data)
+- `--threshold FLOAT`: Base model detection threshold (default: 0.5)
+- `--verifier-threshold FLOAT`: Verifier confidence threshold (default: 0.3)
 
 ### Test Mode
 ```bash

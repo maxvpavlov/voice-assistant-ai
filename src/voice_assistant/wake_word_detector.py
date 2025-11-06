@@ -41,7 +41,9 @@ class WakeWordDetector:
         self,
         wake_words: Optional[List[str]] = None,
         threshold: float = 0.5,
-        on_detection: Optional[Callable[[str, float], None]] = None
+        on_detection: Optional[Callable[[str, float], None]] = None,
+        custom_verifier_models: Optional[dict] = None,
+        custom_verifier_threshold: float = 0.3
     ):
         """
         Initialize the wake word detector.
@@ -52,6 +54,9 @@ class WakeWordDetector:
             threshold: Detection confidence threshold (0.0 to 1.0)
             on_detection: Callback function called when wake word is detected.
                          Receives wake_word name and confidence score.
+            custom_verifier_models: Dict mapping model name to verifier .pkl path
+                                   Example: {"alexa": "path/to/verifier.pkl"}
+            custom_verifier_threshold: Threshold for custom verifier activation (default: 0.3)
         """
         self.wake_words = wake_words
         self.threshold = threshold
@@ -59,7 +64,16 @@ class WakeWordDetector:
 
         # Initialize model
         logger.info("Loading openWakeWord models...")
-        self.model = Model(wakeword_models=wake_words if wake_words else [])
+        model_kwargs = {
+            "wakeword_models": wake_words if wake_words else []
+        }
+
+        if custom_verifier_models:
+            model_kwargs["custom_verifier_models"] = custom_verifier_models
+            model_kwargs["custom_verifier_threshold"] = custom_verifier_threshold
+            logger.info(f"Loading custom verifier models: {list(custom_verifier_models.keys())}")
+
+        self.model = Model(**model_kwargs)
         logger.info(f"Loaded models: {list(self.model.models.keys())}")
 
         # Audio stream

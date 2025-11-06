@@ -8,5 +8,6 @@ __author__ = "Voice Assistant Team"
 
 from .wake_word_detector import WakeWordDetector
 from .audio_recorder import AudioRecorder
+from .model_trainer import ModelTrainer
 
-__all__ = ["WakeWordDetector", "AudioRecorder"]
+__all__ = ["WakeWordDetector", "AudioRecorder", "ModelTrainer"]
