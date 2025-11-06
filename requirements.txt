@@ -2,6 +2,7 @@
 
 # Wake Word Detection
 openwakeword>=0.6.0
+onnxruntime>=1.16.0  # For ONNX model support (better Mac compatibility than tflite)
 
 # Audio Processing
 pyaudio>=0.2.13
