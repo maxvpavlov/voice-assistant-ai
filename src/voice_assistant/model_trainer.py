@@ -111,7 +111,8 @@ class ModelTrainer:
                 positive_reference_clips=positive_clips,
                 negative_reference_clips=negative_clips if negative_clips else None,
                 output_path=str(output_path),
-                model_name=f"{base_model}.onnx"  # Use .onnx extension (better Mac support)
+                model_name=f"{base_model}.onnx",  # Use .onnx extension (better Mac support)
+                inference_framework="onnx"  # Force ONNX instead of tflite
             )
 
             logger.info(f"\n✅ Model training complete!")
