@@ -71,6 +71,29 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Preparing Models for Git
+
+If you want to share models via git (useful for collaborative development):
+
+```bash
+# This automatically finds and copies models from your openwakeword installation
+# to the models/ directory so they can be committed
+python3 copy-models-to-git.py
+```
+
+This will:
+- Locate your openwakeword installation
+- Copy required models (alexa, embedding_model, melspectrogram) to `models/`
+- Verify model integrity (skips corrupted files)
+- Show a summary of what was copied
+
+Then commit and push:
+```bash
+git add models/
+git commit -m "Add base openWakeWord models"
+git push
+```
+
 ## Using edge-wake-word CLI
 
 The `edge-wake-word` command provides three modes: train, test, and run.
