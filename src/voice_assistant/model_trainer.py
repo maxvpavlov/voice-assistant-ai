@@ -117,7 +117,8 @@ class ModelTrainer:
                 negative_reference_clips=negative_clips if negative_clips else None,
                 output_path=str(output_path),
                 model_name=model_name,
-                inference_framework="onnx"  # Force ONNX instead of tflite
+                inference_framework="onnx",  # Use onnx
+                wakeword_models=[model_name]  # Only load the specific model we need
             )
 
             logger.info(f"\n✅ Model training complete!")
