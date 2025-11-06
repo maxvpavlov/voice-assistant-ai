@@ -36,7 +36,15 @@ ENV/
 
 # OpenWakeWord cache
 .cache/
+
+# Model files (but allow models in training_data and local models directory)
 *.onnx
+*.tflite
+!training_data/**/*.onnx
+!training_data/**/*.tflite
+!training_data/**/*.pkl
+!models/*.onnx
+!models/*.tflite
 
 # Audio files (but allow training_data samples)
 *.mp3
