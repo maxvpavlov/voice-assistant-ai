@@ -15,6 +15,9 @@ import numpy as np
 import glob
 
 # Check dependencies
+_DEPENDENCIES_OK = True
+_IMPORT_ERROR_MSG = None
+
 try:
     import torch
     from torch import nn, optim
@@ -23,10 +26,8 @@ try:
     import yaml
     from tqdm import tqdm
 except ImportError as e:
-    print(f"❌ Missing dependency: {e}")
-    print("\nPlease install training requirements:")
-    print("  pip install -r requirements-training.txt")
-    sys.exit(1)
+    _DEPENDENCIES_OK = False
+    _IMPORT_ERROR_MSG = f"❌ Missing dependency: {e}\n\nPlease install training requirements:\n  pip install -r requirements-training.txt\n"
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
@@ -35,9 +36,8 @@ try:
     from openwakeword.utils import AudioFeatures, compute_features_from_generator
     from openwakeword.data import augment_clips
 except ImportError as e:
-    print(f"❌ Error importing openwakeword: {e}")
-    print("\nPlease install: pip install openwakeword")
-    sys.exit(1)
+    _DEPENDENCIES_OK = False
+    _IMPORT_ERROR_MSG = f"❌ Error importing openwakeword: {e}\n\nPlease install: pip install openwakeword\n"
 
 
 logging.basicConfig(level=logging.INFO)
@@ -341,6 +341,11 @@ def main():
 
     args = parser.parse_args()
 
+    # Check if dependencies are available
+    if not _DEPENDENCIES_OK:
+        print(_IMPORT_ERROR_MSG)
+        return 1
+
     # Setup paths
     wake_word_normalized = args.wake_word.lower().replace(" ", "_")
     wake_word_dir = Path(args.data_dir) / wake_word_normalized
@@ -417,4 +422,11 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\n⚠️  Training interrupted by user.\n")
+    except Exception as e:
+        print(f"\n❌ Unexpected error: {e}\n")
+        import traceback
+        traceback.print_exc()
