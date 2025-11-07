@@ -44,9 +44,13 @@ def main():
 
         # Models needed for training with custom verifiers
         required_models = [
-            # Base wake word model (we use alexa as the base)
+            # Base wake word models
             'alexa_v0.1.onnx',
             'alexa_v0.1.tflite',
+            'hey_jarvis_v0.1.onnx',      # For "hey" phrases like "hey edge"
+            'hey_jarvis_v0.1.tflite',    # For "hey" phrases like "hey edge"
+            'hey_mycroft_v0.1.onnx',     # Alternative for "hey" phrases
+            'hey_mycroft_v0.1.tflite',   # Alternative for "hey" phrases
 
             # Required preprocessing models
             'embedding_model.onnx',
