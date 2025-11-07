@@ -93,6 +93,24 @@ echo ""
 echo "📦 Installing dependencies from requirements.txt..."
 pip install -r "$SCRIPT_DIR/requirements.txt"
 
+# Check for training requirements
+if [ -f "$SCRIPT_DIR/requirements-training.txt" ]; then
+    echo ""
+    echo "📦 Found requirements-training.txt (for full model training)"
+    echo "   This includes PyTorch and other ML training dependencies (~500MB)"
+    echo ""
+    read -p "Would you like to install training dependencies? [y/N] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "📦 Installing training dependencies..."
+        pip install -r "$SCRIPT_DIR/requirements-training.txt"
+        echo "✓ Training dependencies installed"
+    else
+        echo "⏭️  Skipping training dependencies"
+        echo "   (You can install them later with: pip install -r requirements-training.txt)"
+    fi
+fi
+
 echo ""
 echo "=========================================="
 echo "✅ Setup Complete!"
