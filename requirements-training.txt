@@ -1,0 +1,20 @@
+# Training Requirements for Full Model
+
+# Core ML/Training
+torch>=2.0.0
+torchinfo>=1.8.0
+torchmetrics>=1.0.0
+scipy>=1.10.0
+pyyaml>=6.0
+
+# Audio Processing (already have these)
+# openwakeword>=0.6.0
+# numpy>=1.24.0
+# pyaudio>=0.2.13
+
+# Data Augmentation
+# audiomentations>=0.33.0  # For audio augmentation
+# pyroomacoustics>=0.7.3   # For room impulse response simulation
+
+# TTS for Synthetic Data Generation (optional, can use recorded samples)
+# Will be added if needed
