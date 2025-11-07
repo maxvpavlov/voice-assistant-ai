@@ -57,7 +57,8 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
         echo "⚠️  PortAudio not detected. You may need to install it:"
         echo "   sudo apt-get install -y python3-pyaudio portaudio19-dev"
         echo ""
-        read -p "Would you like to install it now? (requires sudo) [y/N] " -n 1 -r
+        echo -n "Would you like to install it now? (requires sudo) [y/N] "
+        read REPLY
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             sudo apt-get update
@@ -99,7 +100,8 @@ if [ -f "$SCRIPT_DIR/requirements-training.txt" ]; then
     echo "📦 Found requirements-training.txt (for full model training)"
     echo "   This includes PyTorch and other ML training dependencies (~500MB)"
     echo ""
-    read -p "Would you like to install training dependencies? [y/N] " -n 1 -r
+    echo -n "Would you like to install training dependencies? [y/N] "
+    read REPLY
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "📦 Installing training dependencies..."
