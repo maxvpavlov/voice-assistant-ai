@@ -1,0 +1,23 @@
+# Voice Assistant Requirements
+
+# Core wake word detection
+openwakeword>=0.5.0
+pyaudio>=0.2.13
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Model training (required for first run)
+torch>=2.0.0
+onnx>=1.14.0
+onnxscript>=0.1.0
+torchmetrics>=0.11.0
+
+# Speech recognition
+vosk>=0.3.44  # Latest available version
+sounddevice>=0.4.6
+
+# Network communication
+requests>=2.31.0
+
+# Optional: Better speech recognition (Mac)
+# openai-whisper>=20230314
