@@ -378,19 +378,29 @@ class VoiceAssistant:
             # Don't wait for thread since we're being called FROM that thread
             self.wake_detector.stop(wait=False)
 
-        # Start speech recognition
+        # Counter for sentences sent
+        self.sentences_sent = 0
+
+        # Define callback to send each sentence immediately
+        def on_sentence_detected(sentence_text):
+            """Called by Vosk when sentence boundary detected."""
+            if self.state["send_to_inference"] and sentence_text.strip():
+                self.sentences_sent += 1
+                print(f"\n📤 Sending sentence #{self.sentences_sent}...")
+                self.send_to_inference(sentence_text)
+
+        # Start speech recognition with callback
         try:
-            transcript = self.speech_recognizer.recognize_stream(
-                silence_timeout=self.state["silence_timeout"]
+            sentences = self.speech_recognizer.recognize_stream(
+                silence_timeout=self.state["silence_timeout"],
+                on_sentence_callback=on_sentence_detected
             )
 
-            if transcript and transcript.strip():
-                print(f"\n📝 Transcript: '{transcript}'")
-
-                # Send to inference if enabled
-                if self.state["send_to_inference"]:
-                    self.send_to_inference(transcript)
-
+            if sentences:
+                if self.sentences_sent > 0:
+                    print(f"\n✅ Sent {self.sentences_sent} sentence(s) total")
+                else:
+                    print("\n⚠️  No sentences detected")
             else:
                 print("\n⚠️  No speech detected")
 

@@ -62,16 +62,17 @@ class VoskRecognizer:
 
         return rms < self.silence_threshold
 
-    def recognize_stream(self, silence_timeout=3.0, max_duration=30.0):
+    def recognize_stream(self, silence_timeout=3.0, max_duration=30.0, on_sentence_callback=None):
         """
         Recognize speech from microphone with silence detection.
 
         Args:
             silence_timeout: Stop after this many seconds of silence
             max_duration: Maximum recognition duration in seconds
+            on_sentence_callback: Optional callback(sentence_text) called when sentence boundary detected
 
         Returns:
-            Recognized text transcript
+            List of recognized sentences (or single string if no callback provided)
         """
         transcript_parts = []
         last_speech_time = time.time()
@@ -115,7 +116,7 @@ class VoskRecognizer:
 
                     # Feed to recognizer
                     if self.recognizer.AcceptWaveform(data):
-                        # Got a result
+                        # Got a result - sentence boundary detected!
                         result = json.loads(self.recognizer.Result())
                         text = result.get("text", "").strip()
 
@@ -124,6 +125,13 @@ class VoskRecognizer:
                             last_speech_time = time.time()
                             recognition_started = True
                             print(f"   > {text}")
+
+                            # Call callback immediately when sentence detected
+                            if on_sentence_callback:
+                                try:
+                                    on_sentence_callback(text)
+                                except Exception as e:
+                                    print(f"\n⚠️  Callback error: {e}")
 
                     else:
                         # Partial result
@@ -155,11 +163,18 @@ class VoskRecognizer:
 
         if final_text and final_text not in transcript_parts:
             transcript_parts.append(final_text)
+            # Send final result via callback too
+            if on_sentence_callback and final_text:
+                try:
+                    on_sentence_callback(final_text)
+                except Exception as e:
+                    print(f"\n⚠️  Callback error: {e}")
 
-        # Combine transcript
-        full_transcript = " ".join(transcript_parts).strip()
-
-        return full_transcript
+        # Return list if using callbacks, combined string otherwise
+        if on_sentence_callback:
+            return transcript_parts
+        else:
+            return " ".join(transcript_parts).strip()
 
     def test_microphone(self, duration=5.0):
         """
