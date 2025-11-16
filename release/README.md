@@ -2,6 +2,16 @@
 
 Single-script voice assistant with wake word detection, speech recognition, and network inference.
 
+## Platform Support
+
+- ✅ **macOS** - Full support (tested on M4)
+- ✅ **Raspberry Pi 5** - Full support with ARM optimizations
+- ✅ **Linux** - Full support
+- ⚠️ **Raspberry Pi 4** - Supported but slower training (~15-20 min)
+- ❌ **Windows** - Not tested (may work with WSL)
+
+**For Raspberry Pi users**: See [PI_QUICKSTART.md](PI_QUICKSTART.md) or [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md)
+
 ## Quick Start
 
 ### 1. Install Dependencies
