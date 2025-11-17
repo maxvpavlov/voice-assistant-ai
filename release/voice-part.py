@@ -490,7 +490,7 @@ class VoiceAssistant:
                     response = requests.post(
                         endpoint,
                         json=payload,
-                        timeout=5.0
+                        timeout=60.0  # Increased to 60s for agent reasoning time
                     )
 
                     if response.status_code == 200:
@@ -500,6 +500,11 @@ class VoiceAssistant:
 
                     print(f"⚠️  Server returned {response.status_code}")
 
+                except requests.exceptions.Timeout as e:
+                    # Don't retry on timeout - agent is still processing
+                    print(f"⚠️  Request timed out - agent may still be processing")
+                    print(f"   Consider increasing timeout or using faster model")
+                    return
                 except requests.exceptions.RequestException as e:
                     if attempt == 2:
                         raise
