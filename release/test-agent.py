@@ -96,20 +96,41 @@ def send_transcript(text):
         print(f"❌ Error: {e}")
         return False
 
-def main():
-    """Run test scenarios."""
+def interactive_mode():
+    """Interactive mode for free text input."""
     print("""
 ╔════════════════════════════════════════════════════════════════════╗
-║              Inference Agent Test Script                          ║
+║           Interactive Mode - Send Custom Commands                 ║
 ╚════════════════════════════════════════════════════════════════════╝
+
+Enter your commands and the agent will process them with ReAct reasoning.
+Type 'exit', 'quit', or press Ctrl+C to quit.
 """)
 
-    # Check health
-    if not test_health_check():
-        print("\n⚠️  Agent must be running before tests can proceed.")
-        print("   Start agent with: ./inference-agent.py")
-        return
+    while True:
+        try:
+            print()
+            command = input("🎤 You: ").strip()
 
+            if not command:
+                continue
+
+            if command.lower() in ['exit', 'quit', 'q']:
+                print("\n👋 Goodbye!")
+                break
+
+            # Send to agent
+            send_transcript(command)
+
+        except EOFError:
+            print("\n👋 Goodbye!")
+            break
+        except KeyboardInterrupt:
+            print("\n\n👋 Goodbye!")
+            break
+
+def batch_test_mode():
+    """Run predefined test scenarios."""
     print("\n" + "="*70)
     print("🧪 Running Test Scenarios")
     print("="*70)
@@ -161,6 +182,51 @@ def main():
     print(f"❌ Failed: {failed}")
     print(f"📈 Total:  {passed + failed}")
     print("="*70)
+
+def main():
+    """Run test scenarios."""
+    import sys
+
+    print("""
+╔════════════════════════════════════════════════════════════════════╗
+║              Inference Agent Test Script                          ║
+╚════════════════════════════════════════════════════════════════════╝
+""")
+
+    # Check health
+    if not test_health_check():
+        print("\n⚠️  Agent must be running before tests can proceed.")
+        print("   Start agent with: ./inference-agent.py")
+        return
+
+    # Check if command provided as argument
+    if len(sys.argv) > 1:
+        command = ' '.join(sys.argv[1:])
+        print(f"\n📝 Single command mode: \"{command}\"\n")
+        send_transcript(command)
+        return
+
+    # Choose mode
+    print("\n" + "="*70)
+    print("Select mode:")
+    print("  1. Interactive mode (free text input)")
+    print("  2. Batch test mode (predefined tests)")
+    print("="*70)
+
+    while True:
+        try:
+            choice = input("\nEnter choice (1 or 2): ").strip()
+            if choice == '1':
+                interactive_mode()
+                break
+            elif choice == '2':
+                batch_test_mode()
+                break
+            else:
+                print("Invalid choice. Please enter 1 or 2.")
+        except KeyboardInterrupt:
+            print("\n\n👋 Goodbye!")
+            break
 
 if __name__ == '__main__':
     try:
