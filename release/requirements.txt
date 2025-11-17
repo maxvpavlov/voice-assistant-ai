@@ -19,5 +19,10 @@ sounddevice>=0.4.6
 # Network communication
 requests>=2.31.0
 
+# Inference agent (ReAct reasoning)
+flask>=3.0.0
+rich>=13.0.0
+ollama>=0.1.0
+
 # Optional: Better speech recognition (Mac)
 # openai-whisper>=20230314

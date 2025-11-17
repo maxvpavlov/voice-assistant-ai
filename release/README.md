@@ -1,6 +1,33 @@
 # Voice Assistant - Production Release
 
-Single-script voice assistant with wake word detection, speech recognition, and network inference.
+Single-script voice assistant with wake word detection, speech recognition, and **ReAct-powered inference agent**.
+
+## 🆕 New: Intelligent Inference Agent
+
+The voice assistant now includes an **inference agent** that uses ReAct (Reasoning + Acting) pattern to process voice commands with LLM-powered reasoning!
+
+**Quick Start with Agent**: See [AGENT_QUICKSTART.md](AGENT_QUICKSTART.md)
+
+**Features**:
+- 🧠 **ReAct reasoning** - LLM reasons about commands and takes actions
+- 🏠 **Smart home control** - Lights, temperature, timers, weather
+- 🔧 **Extensible tools** - Add custom integrations easily
+- 📊 **Transparent reasoning** - See how the agent thinks
+- 🚀 **Streaming responses** - Fast first-token delivery
+
+**Example**:
+```
+You: "hey edge"
+You: "turn on the lights and set temperature to 72"
+
+Agent:
+  💭 Thought: User wants lights on and temperature set
+  🔧 Action: control_light(living_room, on)
+  👁️  Observation: Light in living_room turned on
+  🔧 Action: control_temperature(72, F)
+  👁️  Observation: Temperature set to 72°F
+  💬 Final Answer: I've turned on the lights and set the temperature to 72°F
+```
 
 ## Platform Support
 

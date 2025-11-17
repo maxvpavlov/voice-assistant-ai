@@ -436,6 +436,38 @@ class VoiceAssistant:
 
         print(f"● Listening for '{self.state['wake_word']}'...\n")
 
+    def display_agent_response(self, result):
+        """Display agent reasoning and response in a readable format."""
+        print("\n" + "="*70)
+        print("🤖 AGENT RESPONSE")
+        print("="*70)
+
+        # Show final answer prominently
+        if result.get("final_answer"):
+            print(f"\n💬 {result['final_answer']}\n")
+
+        # Show reasoning steps if available
+        if result.get("reasoning_steps"):
+            print("📋 Reasoning Process:")
+            for step in result["reasoning_steps"]:
+                step_num = step.get("step", "?")
+                print(f"\n  Step {step_num}:")
+
+                if step.get("thought"):
+                    print(f"    💭 Thought: {step['thought']}")
+
+                if step.get("action"):
+                    print(f"    🔧 Action: {step['action']}")
+
+                if step.get("observation"):
+                    print(f"    👁️  Observation: {step['observation']}")
+
+        # Show metadata
+        steps_taken = result.get("steps_taken", "?")
+        status = result.get("status", "unknown")
+        print(f"\n✓ Completed in {steps_taken} step(s) [Status: {status}]")
+        print("="*70 + "\n")
+
     def send_to_inference(self, transcript):
         """Send transcript to inference endpoint."""
 
@@ -463,7 +495,7 @@ class VoiceAssistant:
 
                     if response.status_code == 200:
                         result = response.json()
-                        print(f"✓ Response: {result}")
+                        self.display_agent_response(result)
                         return
 
                     print(f"⚠️  Server returned {response.status_code}")
