@@ -6,6 +6,8 @@ A modular voice assistant library designed for Raspberry Pi 5 and macOS. Feature
 
 - **Wake Word Detection**: Always-listening wake word detection using openWakeWord
 - **Custom Training**: Record and train your own wake words
+- **🌍 Multilingual**: Works with ANY language (English, Spanish, Mandarin, Arabic, etc.)
+- **Synthetic Data Generation**: Automatically creates 80+ variations from 5 samples
 - **Cross-Platform**: Works on both Raspberry Pi 5 and macOS
 - **Low Resource Usage**: Optimized for embedded devices
 - **Multiple Wake Words**: Support for multiple pre-trained wake words
@@ -97,6 +99,46 @@ git push
 ## Using edge-wake-word CLI
 
 The `edge-wake-word` command provides three modes: train, test, and run.
+
+### 🆕 Quick Start: Wake Word Manager (Recommended)
+
+For the best experience with **persistent state management**, use the wake word manager:
+
+```bash
+./wake-word-manager.py
+```
+
+This stateful manager:
+- **Remembers** all your trained models across sessions
+- **Detects** existing training and offers to resume or retrain
+- **Manages** multiple wake words easily
+- **Unified** interface for training and inference
+
+Perfect for iterative development! See [WAKE_WORD_MANAGER.md](WAKE_WORD_MANAGER.md) for details.
+
+### Alternative: Guided Training (First-Time Users)
+
+For a one-shot guided experience without state persistence:
+
+```bash
+./guided-training.py
+```
+
+This interactive script will:
+1. Guide you through choosing a wake word
+2. Test your microphone
+3. Record 5 voice samples from you
+4. Automatically generate 80+ synthetic variations (pitch, speed, noise)
+5. Train a full neural network model (~3 minutes)
+6. Let you test your custom wake word!
+
+**No ML knowledge required** - perfect for demos! The whole process takes 5-10 minutes.
+
+**Works in ANY language** - English, Spanish, Mandarin, Arabic, Japanese, etc. See [MULTILINGUAL_SUPPORT.md](MULTILINGUAL_SUPPORT.md) for details.
+
+---
+
+### Manual Training Options
 
 ### Test Mode - Try Pre-trained Wake Words
 

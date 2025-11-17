@@ -140,13 +140,8 @@ class VoiceAssistant:
         if local_path.exists():
             return True, str(local_path)
 
-        # Check parent models directory
-        parent_model_path = Path(f"../models/{normalized}_v0.1.onnx")
-        if parent_model_path.exists():
-            return True, str(parent_model_path)
-
-        # Check training output directory
-        trained_path = Path(f"../trained_models/{normalized}/{normalized}_v0.1.onnx")
+        # Check local training output directory
+        trained_path = Path(f"trained_models/{normalized}/{normalized}_v0.1.onnx")
         if trained_path.exists():
             return True, str(trained_path)
 
@@ -209,14 +204,15 @@ class VoiceAssistant:
 
         # Step 1: Test microphone (optional, quick)
         print("\n📱 Testing microphone...")
-        test_result = subprocess.run(
-            f"cd .. && source venv/bin/activate && timeout 5 ./edge-wake-word train --test-mic 2>&1 | head -20",
-            shell=True,
-            executable='/bin/bash',
-            capture_output=True
-        )
-        if test_result.returncode == 0 or test_result.returncode == 124:  # timeout is ok
+        # Quick microphone test using AudioRecorder
+        try:
+            from voice_assistant import AudioRecorder
+            # Just initialize to test mic access
+            recorder = AudioRecorder(output_dir="training_data")
             print("✓ Microphone ready")
+        except Exception as e:
+            print(f"⚠️  Microphone test: {e}")
+            # Continue anyway, actual recording will show if there's an issue
 
         # Step 2: Record samples
         self.print_section("🎙️  Recording Training Samples")
@@ -229,14 +225,36 @@ class VoiceAssistant:
         if not self.args.yes:
             input("Press Enter when ready...")
 
-        record_result = subprocess.run(
-            f'cd .. && source venv/bin/activate && ./edge-wake-word train --wake-word "{wake_word}" --num-samples 5',
-            shell=True,
-            executable='/bin/bash'
-        )
+        # Record samples using AudioRecorder
+        try:
+            from voice_assistant import AudioRecorder
+            recorder = AudioRecorder(output_dir="training_data")
 
-        if record_result.returncode != 0:
-            print("\n❌ Recording failed.")
+            # Create wake word directory
+            wake_word_dir = Path(f"training_data/{normalized}")
+            wake_word_dir.mkdir(parents=True, exist_ok=True)
+
+            # Record positive samples
+            print(f"\n🎙️  Recording 5 samples...")
+            print(f"Say '{wake_word}' when you see the countdown.\n")
+
+            for i in range(5):
+                print(f"Sample {i+1}/5")
+                input("Press Enter when ready...")
+
+                recorder.record_sample(
+                    duration=2.0,
+                    sample_type="positive",
+                    wake_word=normalized,
+                    countdown=True
+                )
+
+            print(f"\n✅ Recorded 5 samples")
+
+        except Exception as e:
+            print(f"\n❌ Recording failed: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
         # Step 3: Train model with synthetic data
@@ -245,7 +263,7 @@ class VoiceAssistant:
         print("This takes about 3-5 minutes...\n")
 
         train_result = subprocess.run(
-            f'cd .. && source venv/bin/activate && python3 train-full-model.py --wake-word "{wake_word}" --epochs 50 --augmentations 20',
+            f'source venv/bin/activate && python3 train-full-model.py --wake-word "{wake_word}" --epochs 50 --augmentations 20',
             shell=True,
             executable='/bin/bash'
         )
@@ -254,16 +272,16 @@ class VoiceAssistant:
             print("\n❌ Training failed.")
             return False
 
-        # Step 4: Copy model to release directory
+        # Step 4: Copy model to models directory
         print("\n📦 Installing model...")
 
         # Create models directory if it doesn't exist
         models_dir = Path("models")
         models_dir.mkdir(exist_ok=True)
 
-        # Copy model files
+        # Copy model files from trained_models to models
         subprocess.run(
-            f"cp ../trained_models/{normalized}/{normalized}_v0.1.onnx* models/",
+            f"cp trained_models/{normalized}/{normalized}_v0.1.onnx* models/",
             shell=True
         )
 

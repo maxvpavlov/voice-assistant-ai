@@ -1,0 +1,11 @@
+{
+  "models": {
+    "hey_edge": {
+      "model_path": "models/hey_edge_v0.1.onnx",
+      "num_samples": 5,
+      "method": "full_model",
+      "wake_word": "hey edge",
+      "last_updated": "2025-11-14T10:23:00"
+    }
+  }
+}

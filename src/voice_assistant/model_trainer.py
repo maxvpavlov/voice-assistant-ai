@@ -11,6 +11,10 @@ import glob
 try:
     import openwakeword
     from openwakeword import train_custom_verifier
+    from openwakeword.custom_verifier_model import get_reference_clip_features, train_verifier_model
+    import numpy as np
+    import pickle
+    from tqdm import tqdm
 except ImportError as e:
     raise ImportError(
         f"Training dependencies not installed: {e}. "
