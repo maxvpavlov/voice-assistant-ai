@@ -145,6 +145,13 @@ class WakeWordDetector:
             self.stream.close()
             self.stream = None
 
+        # Clear audio queue to prevent stale data on restart
+        while not self.audio_queue.empty():
+            try:
+                self.audio_queue.get_nowait()
+            except queue.Empty:
+                break
+
         if self.thread and wait:
             # Check if we're being called from the detection thread itself
             import threading

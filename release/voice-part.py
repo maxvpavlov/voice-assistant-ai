@@ -425,6 +425,10 @@ class VoiceAssistant:
         except Exception as e:
             print(f"\n❌ Recognition error: {e}")
 
+        # Brief pause to ensure audio resources are fully released
+        import time
+        time.sleep(0.3)
+
         # Restart wake word detector
         print("🔄 Resuming wake word detection...")
         if self.wake_detector:
