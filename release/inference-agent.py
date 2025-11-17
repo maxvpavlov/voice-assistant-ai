@@ -142,7 +142,7 @@ Rules:
 def get_llm_response(history, stream=True):
     """Query Ollama with conversation history."""
     return ollama.chat(
-        model='llama3.1:8b',  # Change to your preferred model
+        model='gemma3:12b',  # Using gemma3:12b - fast and efficient
         messages=history,
         stream=stream
     )
@@ -157,12 +157,96 @@ def parse_output(output: str):
     action_str = action_match.group(1).strip() if action_match else ""
     final_answer = final_answer_match.group(1).strip() if final_answer_match else ""
 
+    # Remove trailing | characters from all parsed sections
+    thought = thought.rstrip('|').strip()
+    action_str = action_str.rstrip('|').strip()
+    final_answer = final_answer.rstrip('|').strip()
+
     action = None
     if action_str and ':' in action_str:
         tool, arg = action_str.split(':', 1)
-        action = (tool.strip(), arg.strip())
+        tool = tool.strip()
+        arg = arg.strip().rstrip('|').strip()  # Clean up arg too
+        action = (tool, arg)
 
     return thought, action, final_answer
+
+def parse_tool_call(tool_name: str, arg_string: str):
+    """
+    Parse tool call arguments intelligently.
+
+    Handles formats like:
+    - "living_room, on" -> positional args
+    - "location=living_room, state=on" -> named args
+    - Just "pwd" -> single arg
+    """
+    arg_string = arg_string.strip()
+
+    # Special case tools
+    if tool_name == "control_light":
+        # Expecting: location, state OR location=X, state=Y
+        if '=' in arg_string:
+            # Named arguments
+            parts = {}
+            for part in arg_string.split(','):
+                if '=' in part:
+                    key, val = part.split('=', 1)
+                    parts[key.strip()] = val.strip()
+            return parts.get('location', 'living_room'), parts.get('state', 'on')
+        else:
+            # Positional arguments
+            args = [a.strip() for a in arg_string.split(',')]
+            if len(args) >= 2:
+                return args[0], args[1]
+            elif len(args) == 1:
+                return "living_room", args[0]
+            else:
+                return "living_room", "on"
+
+    elif tool_name == "control_temperature":
+        # Expecting: temperature, unit OR temperature=X, unit=Y
+        if '=' in arg_string:
+            parts = {}
+            for part in arg_string.split(','):
+                if '=' in part:
+                    key, val = part.split('=', 1)
+                    parts[key.strip()] = val.strip()
+            temp_str = parts.get('temperature', '72')
+            try:
+                temp = int(temp_str)
+            except:
+                temp = 72
+            return temp, parts.get('unit', 'F')
+        else:
+            args = [a.strip() for a in arg_string.split(',')]
+            try:
+                temp = int(args[0])
+            except:
+                temp = 72
+            unit = args[1] if len(args) > 1 else 'F'
+            return temp, unit
+
+    elif tool_name in ["get_weather", "run_shell_command"]:
+        # Single string argument
+        return arg_string
+
+    elif tool_name == "set_timer":
+        # Expecting: duration, label OR duration=X, label=Y
+        if '=' in arg_string:
+            parts = {}
+            for part in arg_string.split(','):
+                if '=' in part:
+                    key, val = part.split('=', 1)
+                    parts[key.strip()] = val.strip()
+            return parts.get('duration', '5 minutes'), parts.get('label', '')
+        else:
+            args = [a.strip() for a in arg_string.split(',')]
+            duration = args[0] if args else '5 minutes'
+            label = args[1] if len(args) > 1 else ''
+            return duration, label
+
+    # Default: return as-is
+    return arg_string
 
 def run_agent(query: str, max_steps: int = 5):
     """
@@ -231,7 +315,15 @@ def run_agent(query: str, max_steps: int = 5):
 
                 # Execute tool
                 try:
-                    observation = TOOLS[tool_name](arg)
+                    # Parse arguments intelligently
+                    parsed_args = parse_tool_call(tool_name, arg)
+
+                    # Call tool with parsed arguments
+                    if isinstance(parsed_args, tuple):
+                        observation = TOOLS[tool_name](*parsed_args)
+                    else:
+                        observation = TOOLS[tool_name](parsed_args)
+
                     console.print(f"[blue]👁️  Observation:[/blue] {observation}")
                     step_data["observation"] = observation
 
@@ -323,7 +415,7 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "service": "voice-inference-agent",
-        "model": "llama3.1:8b",
+        "model": "gemma3:12b",
         "tools_available": list(TOOLS.keys())
     })
 
@@ -346,7 +438,7 @@ if __name__ == '__main__':
         "[bold cyan]Voice Inference Agent[/bold cyan]\n"
         "ReAct-based reasoning for voice commands\n\n"
         f"Tools available: {', '.join(TOOLS.keys())}\n"
-        "Model: llama3.1:8b",
+        "Model: gemma3:12b",
         border_style="cyan"
     ))
 
