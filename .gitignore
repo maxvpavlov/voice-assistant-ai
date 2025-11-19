@@ -54,6 +54,16 @@ ENV/
 !training_data/
 !training_data/**/*.wav
 
+# Trained models and training data (user-specific)
+release/trained_models/
+release/training_data/
+release/models/*.onnx.data
+release/.voice-assistant-state.json
+
+# Test scripts (user-specific)
+release/test_detection_live.py
+release/test_model.py
+
 # Logs
 *.log
 
