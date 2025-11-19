@@ -64,7 +64,7 @@ Or edit `.voice-assistant-state.json`:
 ./voice-part.py --retrain
 ```
 
-The system now records **15 samples** instead of 5. Tips for better training:
+The system now records **5 samples** instead of 5. Tips for better training:
 
 1. **Vary your voice**:
    - Some samples louder, some quieter
@@ -112,10 +112,10 @@ The system now records **15 samples** instead of 5. Tips for better training:
 ./voice-part.py --retrain
 ```
 
-When recording the 15 samples:
-- Samples 1-5: Normal volume and speed
-- Samples 6-10: Quieter or faster
-- Samples 11-15: Louder or slower
+When recording the 5 samples:
+- Samples 1-3: Normal volume and speed
+- Sample 4: Quieter or faster
+- Sample 5: Louder or slower
 
 ### Issue 4: Model File Missing
 
@@ -174,7 +174,7 @@ Or choose option 1 when prompted (Train a NEW wake word).
 - Speak clearly and naturally
 - Say the exact wake word each time
 - Vary your tone and speed across samples
-- Record 15 samples (new default)
+- Record 5 samples (new default)
 
 ❌ **Don't**:
 - Whisper or shout
@@ -256,7 +256,7 @@ If samples sound:
 ### Training Commands
 
 ```bash
-# Train new wake word (15 samples, interactive)
+# Train new wake word (5 samples, interactive)
 ./voice-part.py
 
 # Retrain existing wake word
@@ -316,14 +316,14 @@ More samples = better model, but diminishing returns:
 | 30 | Better | ~10 min | For production use |
 | 50+ | Best | ~15+ min | Overkill for most cases |
 
-The system now uses **15 samples by default** (changed from 5).
+The system now uses **5 samples by default** (changed from 5).
 
 ## Synthetic Augmentation
 
 The training process automatically creates synthetic variations:
 
 - **20x augmentation** (default)
-- 15 original samples × 20 augmentations = **300 training samples**
+- 5 original samples × 20 augmentations = **100 training samples**
 - Techniques: pitch shift, time stretch, noise injection, volume variation
 
 This helps the model generalize to different speaking styles.
@@ -387,7 +387,7 @@ TypeError: AudioRecorder.record_sample() got an unexpected keyword argument 'sam
 1. **Initial Training**:
    ```bash
    ./voice-part.py
-   # Record 15 samples, vary tone/speed/volume
+   # Record 5 samples, vary tone/speed/volume
    ```
 
 2. **Test Detection**:
