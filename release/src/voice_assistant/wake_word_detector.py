@@ -98,6 +98,9 @@ class WakeWordDetector:
         self.thread: Optional[threading.Thread] = None
         self.audio_queue = queue.Queue()
 
+        # Cooldown mechanism to prevent false positives after resume
+        self.chunks_to_skip = 0  # Number of audio chunks to skip after restart
+
     def list_available_models(self) -> List[str]:
         """List all available wake word models."""
         return list(self.model.models.keys())
@@ -110,6 +113,15 @@ class WakeWordDetector:
 
         logger.info("Starting wake word detector...")
         self.is_running = True
+
+        # Reset model state to clear any residual activations
+        # This prevents false positives from lingering audio data
+        self.model.reset()
+        logger.debug("Reset model internal state")
+
+        # Skip first 10 chunks (~0.8 seconds) after resume to let audio buffer stabilize
+        # This prevents false positives from stale audio data
+        self.chunks_to_skip = 10
 
         # Open audio stream
         self.stream = self.audio.open(
@@ -177,6 +189,11 @@ class WakeWordDetector:
             try:
                 # Get audio data from queue (with timeout to allow stopping)
                 audio_data = self.audio_queue.get(timeout=0.1)
+
+                # Skip chunks during cooldown period (prevents false positives after resume)
+                if self.chunks_to_skip > 0:
+                    self.chunks_to_skip -= 1
+                    continue
 
                 # Convert bytes to numpy array
                 audio_array = np.frombuffer(audio_data, dtype=np.int16)
