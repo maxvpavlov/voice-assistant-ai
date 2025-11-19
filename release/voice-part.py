@@ -167,6 +167,19 @@ class VoiceAssistant:
             if not self.args.yes:
                 choice = input("\nUse existing model? (y/n): ").strip().lower()
                 if choice != 'y':
+                    # Ask if they want to train a new wake word or retrain existing
+                    print("\nOptions:")
+                    print("  1. Train a NEW wake word")
+                    print("  2. Retrain existing wake word")
+
+                    retrain_choice = input("\nChoose (1 or 2): ").strip()
+
+                    if retrain_choice == '1':
+                        # Clear existing wake word to force new prompt
+                        self.state["wake_word"] = None
+                        self.state["model_trained"] = False
+                        self.state_manager.save_state()
+
                     return self.train_wake_word()
 
             self.state["model_path"] = model_path
