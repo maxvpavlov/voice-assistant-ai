@@ -248,21 +248,39 @@ class VoiceAssistant:
             wake_word_dir.mkdir(parents=True, exist_ok=True)
 
             # Record positive samples
-            print(f"\n🎙️  Recording 5 samples...")
-            print(f"Say '{wake_word}' when you see the countdown.\n")
+            num_samples = 5  # 5 samples with 20x augmentation = 105 total training samples
+            print(f"\n🎙️  Recording {num_samples} samples...")
+            print(f"Say '{wake_word}' when you see the countdown.")
+            print("💡 Tip: Vary your tone, volume, and speed for better model quality!\n")
 
-            for i in range(5):
-                print(f"Sample {i+1}/5")
+            # Create positive samples directory
+            positive_dir = wake_word_dir / "positive"
+            positive_dir.mkdir(parents=True, exist_ok=True)
+
+            # Save original output_dir
+            original_output_dir = recorder.output_dir
+
+            for i in range(num_samples):
+                print(f"Sample {i+1}/{num_samples}")
                 input("Press Enter when ready...")
 
+                # Set output directory to positive samples folder
+                recorder.output_dir = positive_dir
+
+                # Generate filename
+                filename = f"positive_{i+1:04d}.wav"
+
+                # Record with correct parameters
                 recorder.record_sample(
                     duration=2.0,
-                    sample_type="positive",
-                    wake_word=normalized,
-                    countdown=True
+                    filename=filename,
+                    countdown=3
                 )
 
-            print(f"\n✅ Recorded 5 samples")
+            # Restore original output_dir
+            recorder.output_dir = original_output_dir
+
+            print(f"\n✅ Recorded {num_samples} samples")
 
         except Exception as e:
             print(f"\n❌ Recording failed: {e}")
@@ -293,8 +311,9 @@ class VoiceAssistant:
         models_dir.mkdir(exist_ok=True)
 
         # Copy model files from trained_models to models
+        # Copy both .onnx file and .onnx.data file (external weights)
         subprocess.run(
-            f"cp trained_models/{normalized}/{normalized}_v0.1.onnx* models/",
+            f"cp trained_models/{normalized}/{normalized}_v0.1.onnx trained_models/{normalized}/{normalized}_v0.1.onnx.data models/ 2>/dev/null || true",
             shell=True
         )
 
@@ -451,35 +470,59 @@ class VoiceAssistant:
 
     def display_agent_response(self, result):
         """Display agent reasoning and response in a readable format."""
-        print("\n" + "="*70)
-        print("🤖 AGENT RESPONSE")
-        print("="*70)
+        # ANSI color codes
+        CYAN = '\033[96m'
+        GREEN = '\033[92m'
+        YELLOW = '\033[93m'
+        BLUE = '\033[94m'
+        MAGENTA = '\033[95m'
+        BOLD = '\033[1m'
+        RESET = '\033[0m'
 
-        # Show final answer prominently
+        # Top border with color
+        print(f"\n{CYAN}{'╔' + '═'*68 + '╗'}{RESET}")
+        print(f"{CYAN}║{RESET} {BOLD}{GREEN}🤖 AGENT RESPONSE{RESET}{' '*49}{CYAN}║{RESET}")
+        print(f"{CYAN}{'╚' + '═'*68 + '╝'}{RESET}")
+
+        # Show final answer prominently with background
         if result.get("final_answer"):
-            print(f"\n💬 {result['final_answer']}\n")
+            print(f"\n{BOLD}{GREEN}┌─ 💬 Answer{RESET}")
+            # Wrap answer in a box
+            answer_lines = result['final_answer'].split('\n')
+            for line in answer_lines:
+                print(f"{GREEN}│{RESET} {BOLD}{line}{RESET}")
+            print(f"{GREEN}└{'─'*68}{RESET}\n")
 
-        # Show reasoning steps if available
+        # Show reasoning steps if available (collapsed by default, but visible)
         if result.get("reasoning_steps"):
-            print("📋 Reasoning Process:")
+            print(f"{BLUE}┌─ 📋 Reasoning Process{RESET}")
             for step in result["reasoning_steps"]:
                 step_num = step.get("step", "?")
-                print(f"\n  Step {step_num}:")
+                print(f"{BLUE}│{RESET}")
+                print(f"{BLUE}│{RESET}  {YELLOW}Step {step_num}:{RESET}")
 
                 if step.get("thought"):
-                    print(f"    💭 Thought: {step['thought']}")
+                    print(f"{BLUE}│{RESET}    {MAGENTA}💭{RESET} {step['thought']}")
 
                 if step.get("action"):
-                    print(f"    🔧 Action: {step['action']}")
+                    print(f"{BLUE}│{RESET}    {CYAN}🔧{RESET} {step['action']}")
 
                 if step.get("observation"):
-                    print(f"    👁️  Observation: {step['observation']}")
+                    print(f"{BLUE}│{RESET}    {YELLOW}👁️ {RESET} {step['observation']}")
 
-        # Show metadata
-        steps_taken = result.get("steps_taken", "?")
-        status = result.get("status", "unknown")
-        print(f"\n✓ Completed in {steps_taken} step(s) [Status: {status}]")
-        print("="*70 + "\n")
+            # Show metadata
+            steps_taken = result.get("steps_taken", "?")
+            status = result.get("status", "unknown")
+            status_color = GREEN if status == "success" else YELLOW
+            print(f"{BLUE}│{RESET}")
+            print(f"{BLUE}│{RESET}  {status_color}✓ Completed in {steps_taken} step(s) [Status: {status}]{RESET}")
+            print(f"{BLUE}└{'─'*68}{RESET}\n")
+        else:
+            # No reasoning, just show completion
+            steps_taken = result.get("steps_taken", "?")
+            status = result.get("status", "unknown")
+            status_color = GREEN if status == "success" else YELLOW
+            print(f"{status_color}✓ Completed in {steps_taken} step(s) [Status: {status}]{RESET}\n")
 
     def send_to_inference(self, transcript):
         """Send transcript to inference endpoint."""

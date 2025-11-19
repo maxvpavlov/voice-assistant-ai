@@ -1,12 +1,12 @@
 {
-  "wake_word": "hey edge",
-  "model_path": "models/hey_edge_v0.1.onnx",
+  "wake_word": "hey ksenia",
+  "model_path": "models/hey_ksenia_v0.1.onnx",
   "model_trained": true,
-  "last_training": "2025-11-16T15:48:01.191084",
+  "last_training": "2025-11-19T11:21:28.871867",
   "inference_endpoint": "http://localhost:8000/process",
   "recognition_engine": "vosk",
   "vosk_model_path": "models/vosk-model-small-en-us-0.15",
   "silence_timeout": 3.0,
-  "detection_threshold": 0.5,
+  "detection_threshold": 0.3,
   "send_to_inference": true
 }
