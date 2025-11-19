@@ -1,6 +1,0 @@
-
-# Release-specific ignores
-release/venv/
-release/training_data/
-release/trained_models/
-release/.voice-assistant-state.json
