@@ -1,16 +1,28 @@
-# Voice Assistant Dependencies
+# Voice Assistant Requirements
 
-# Wake Word Detection
-openwakeword>=0.6.0
-onnxruntime>=1.16.0  # For ONNX model support (better Mac compatibility than tflite)
-
-# Audio Processing
+# Core wake word detection
+openwakeword>=0.5.0
 pyaudio>=0.2.13
 numpy>=1.24.0
+scipy>=1.10.0
 
-# Future: Speech Recognition (to be added later)
-# vosk>=0.3.45
-# openai-whisper>=20231117
+# Model training (required for first run)
+torch>=2.0.0
+onnx>=1.14.0
+onnxscript>=0.1.0
+torchmetrics>=0.11.0
 
-# Utilities
-typing-extensions>=4.8.0
+# Speech recognition
+vosk>=0.3.44  # Latest available version
+sounddevice>=0.4.6
+
+# Network communication
+requests>=2.31.0
+
+# Inference agent (ReAct reasoning)
+flask>=3.0.0
+rich>=13.0.0
+ollama>=0.1.0
+
+# Optional: Better speech recognition (Mac)
+# openai-whisper>=20230314
