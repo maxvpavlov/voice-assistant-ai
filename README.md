@@ -1,537 +1,383 @@
-# Voice Assistant - Wake Word Detection & Speech Recognition
+# Voice-Controlled AI Assistant
 
-A modular voice assistant library designed for Raspberry Pi 5 and macOS. Features wake word detection using openWakeWord with custom training capabilities and speech recognition.
+Complete voice-controlled AI assistant system with wake word detection, speech recognition, and ReAct-based inference agent.
 
-## Features
-
-- **Wake Word Detection**: Always-listening wake word detection using openWakeWord
-- **Custom Training**: Record and train your own wake words
-- **🌍 Multilingual**: Works with ANY language (English, Spanish, Mandarin, Arabic, etc.)
-- **Synthetic Data Generation**: Automatically creates 80+ variations from 5 samples
-- **Cross-Platform**: Works on both Raspberry Pi 5 and macOS
-- **Low Resource Usage**: Optimized for embedded devices
-- **Multiple Wake Words**: Support for multiple pre-trained wake words
-- **CLI Tool**: Complete command-line interface for training, testing, and running
-- **Extensible**: Modular design for easy extension with speech recognition
-
-## Current Status
-
-✅ **Phase 1: Wake Word Detection & Training** (Complete)
-- openWakeWord integration
-- Audio capture and processing
-- Multi-threaded detection
-- Audio recording for training data collection
-- **Local model training** - Train custom wake words on M4 Mac or Raspberry Pi!
-- Complete CLI tool (`edge-wake-word`)
-
-🚧 **Phase 2: Speech Recognition** (Coming Next)
-- Vosk integration for Raspberry Pi
-- Optional Whisper support for macOS
-- Command processing pipeline
+**Two coordinated scripts working together:**
+1. **`release/voice-part.py`** - Voice interface (wake word + speech recognition)
+2. **`release/inference-agent.py`** - AI reasoning engine (LLM-powered ReAct agent)
 
 ## Quick Start
 
 ### Prerequisites
-
-**macOS:**
-```bash
-brew install portaudio
-```
-
-**Raspberry Pi 5 (Debian/Ubuntu):**
-```bash
-sudo apt-get update
-sudo apt-get install -y python3-pyaudio portaudio19-dev
-```
+- Python 3.9+ (3.10+ recommended)
+- Ollama with LLM model (gemma3:12b recommended)
+- Microphone
+- 2GB RAM available
 
 ### Installation
 
-1. Clone the repository:
 ```bash
-git clone <repository-url>
-cd voice-activation-and-recognition
-```
+# 1. Install Ollama
+# macOS: brew install ollama
+# Linux: curl -fsSL https://ollama.com/install.sh | sh
 
-2. **Quick Setup** (Recommended):
-```bash
-source setup-and-enter-venv.sh
-```
+# 2. Pull LLM model
+ollama pull gemma3:12b
 
-This will automatically:
-- Install system dependencies (PortAudio)
-- Create a virtual environment
-- Install Python dependencies
-- Activate the environment
-
-**Alternative - Manual Setup:**
-```bash
-# Create virtual environment
+# 3. Setup project
+cd release/
 python3 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Preparing Models for Git
+### Two-Terminal Setup
 
-If you want to share models via git (useful for collaborative development):
-
+**Terminal 1: Start AI Agent**
 ```bash
-# This automatically finds and copies models from your openwakeword installation
-# to the models/ directory so they can be committed
-python3 copy-models-to-git.py
+cd release/
+source venv/bin/activate
+./inference-agent.py
 ```
 
-This will:
-- Locate your openwakeword installation
-- Copy required models (alexa, embedding_model, melspectrogram) to `models/`
-- Verify model integrity (skips corrupted files)
-- Show a summary of what was copied
-
-Then commit and push:
+**Terminal 2: Start Voice Assistant**
 ```bash
-git add models/
-git commit -m "Add base openWakeWord models"
-git push
+cd release/
+source venv/bin/activate
+./voice-part.py
 ```
 
-## Using edge-wake-word CLI
+**First run**: `voice-part.py` guides you through training a wake word (5 minutes)
 
-The `edge-wake-word` command provides three modes: train, test, and run.
+### Usage
 
-### 🆕 Quick Start: Wake Word Manager (Recommended)
+1. Say your wake word (e.g., "hey edge")
+2. Give a voice command (e.g., "turn on the lights")
+3. Wait 3 seconds for silence detection
+4. Agent processes with reasoning and responds
 
-For the best experience with **persistent state management**, use the wake word manager:
+## System Architecture
 
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    VOICE ASSISTANT                              │
+│                   (voice-part.py)                               │
+│                                                                 │
+│  Wake Word Detection → Speech Recognition                       │
+│  (openWakeWord)         (Vosk)                                  │
+│                                                                 │
+│  Microphone → Audio → Transcript                                │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ HTTP POST
+                           │ {"transcript": "turn on lights"}
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                   INFERENCE AGENT                               │
+│                 (inference-agent.py)                            │
+│                                                                 │
+│  ReAct Reasoning Loop (Ollama LLM):                             │
+│    💭 Thought → 🔧 Action → 👁️ Observation → 💬 Answer        │
+│                                                                 │
+│  Available Tools:                                               │
+│    • control_light() - Smart home lights                        │
+│    • control_temperature() - Thermostat                         │
+│    • get_weather() - Weather info                               │
+│    • set_timer() - Timers & reminders                           │
+│    • run_shell_command() - System commands                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## The Two Scripts
+
+### voice-part.py - Voice Interface
+
+**What it does:**
+- Listens for custom wake word (e.g., "hey edge")
+- Captures speech after wake word detection
+- Transcribes speech to text using Vosk
+- Sends transcript to inference agent via HTTP
+
+**Features:**
+- Train custom wake words (5 samples, ~3 min training)
+- Real-time speech recognition
+- Automatic silence detection (3s default)
+- Adjustable detection threshold
+- State persistence across sessions
+
+**Usage:**
 ```bash
-./wake-word-manager.py
+# First run - trains wake word
+./voice-part.py
+
+# Retrain wake word
+./voice-part.py --retrain
+
+# Adjust sensitivity
+./voice-part.py --threshold 0.3
+
+# Configure endpoint
+./voice-part.py --endpoint http://192.168.1.100:8000/process
 ```
 
-This stateful manager:
-- **Remembers** all your trained models across sessions
-- **Detects** existing training and offers to resume or retrain
-- **Manages** multiple wake words easily
-- **Unified** interface for training and inference
+### inference-agent.py - AI Reasoning Engine
 
-Perfect for iterative development! See [WAKE_WORD_MANAGER.md](WAKE_WORD_MANAGER.md) for details.
+**What it does:**
+- Receives voice transcripts via HTTP
+- Uses LLM (Ollama) with ReAct pattern to reason about commands
+- Executes actions using available tools
+- Returns structured responses with reasoning steps
 
-### Alternative: Guided Training (First-Time Users)
+**Features:**
+- ReAct (Reasoning + Acting) pattern
+- Multi-step reasoning
+- Tool execution (lights, temperature, timers, etc.)
+- Extensible tool system
+- Transparent reasoning display
 
-For a one-shot guided experience without state persistence:
-
+**Usage:**
 ```bash
-./guided-training.py
+# Start agent (port 8000)
+./inference-agent.py
+
+# Test without voice
+./test-agent.py "turn on the lights"
+./test-agent.py  # Interactive mode
 ```
 
-This interactive script will:
-1. Guide you through choosing a wake word
-2. Test your microphone
-3. Record 5 voice samples from you
-4. Automatically generate 80+ synthetic variations (pitch, speed, noise)
-5. Train a full neural network model (~3 minutes)
-6. Let you test your custom wake word!
+## Example Session
 
-**No ML knowledge required** - perfect for demos! The whole process takes 5-10 minutes.
+```
+Terminal 2: Voice Assistant
+─────────────────────────────────────────────────────────────────
+● Listening for 'hey edge'...
 
-**Works in ANY language** - English, Spanish, Mandarin, Arabic, Japanese, etc. See [MULTILINGUAL_SUPPORT.md](MULTILINGUAL_SUPPORT.md) for details.
+You: "hey edge"
+> 🎯 WAKE WORD DETECTED! (52.3%)
+> 🎙️  Listening for command...
 
----
+You: "turn on the living room lights and set temperature to 72"
+> 🎤 Listening...
+>    > turn on the living room lights
+> 📤 Sending sentence #1...
+>
+>    > and set temperature to seventy two
+> 📤 Sending sentence #2...
 
-### Manual Training Options
+╔════════════════════════════════════════════════════════════════╗
+║ 🤖 AGENT RESPONSE                                              ║
+╚════════════════════════════════════════════════════════════════╝
 
-### Test Mode - Try Pre-trained Wake Words
+┌─ 💬 Answer
+│ I've turned on the living room lights and set the temperature to 72°F.
+└────────────────────────────────────────────────────────────────
 
-Test with pre-trained wake words like "Alexa" or "Hey Jarvis":
+┌─ 📋 Reasoning Process
+│
+│  Step 1:
+│    💭 User wants living room lights on
+│    🔧 control_light: living_room, on
+│    👁️  Light in living_room turned on
+│
+│  Step 2:
+│    💭 Now setting temperature to 72°F
+│    🔧 control_temperature: 72, F
+│    👁️  Temperature set to 72°F
+│
+│  ✓ Completed in 3 step(s) [Status: success]
+└────────────────────────────────────────────────────────────────
 
+⏸️  Silence detected (3.0s)
+✅ Sent 2 sentence(s) total
+● Listening for 'hey edge'...
+```
+
+## Features
+
+### Wake Word Training
+- Record 5 samples (5 minutes)
+- Automatic synthetic augmentation (20x = 105 total samples)
+- Neural network training with PyTorch
+- ONNX export for production use
+- Any language supported
+
+### Speech Recognition
+- Offline using Vosk (no cloud)
+- Real-time streaming
+- Sentence boundary detection
+- Immediate sentence transmission
+- 3-second silence timeout
+
+### AI Inference
+- Local LLM (Ollama)
+- ReAct reasoning pattern
+- Transparent thought process
+- Tool execution
+- Multi-step complex commands
+
+## Testing & Debugging
+
+### Test Agent Without Voice
 ```bash
-./edge-wake-word test
+cd release/
+./test-agent.py "turn on the lights"
+./test-agent.py  # Interactive mode
 ```
 
-Test specific wake words:
+### Test Voice Detection
 ```bash
-./edge-wake-word test --wake-words alexa hey_jarvis
+./diagnose-wake-word.py  # Test at different thresholds
+./voice-part.py --threshold 0.3  # Lower threshold
 ```
 
-Adjust detection sensitivity:
-```bash
-./edge-wake-word test --threshold 0.6
-```
-
-### Train Mode - Create Custom Wake Words
-
-Train your own custom wake word in 3 steps:
-
-**Step 1: Test your microphone**
-```bash
-./edge-wake-word train --test-mic --list-devices
-```
-
-**Step 2: Record training samples**
-```bash
-./edge-wake-word train --wake-word "hey edge"
-```
-
-This will:
-- Record 5 samples of you saying "hey edge" (default, quick demo)
-- Save them to `training_data/hey_edge/positive/`
-- Guide you through the recording process
-- For production: add `--num-samples 50` for better accuracy
-
-**Step 3: Train your model locally (NEW!)**
-```bash
-./edge-wake-word train-local --wake-word "hey edge"
-```
-
-This will:
-- Train a custom verifier model using your recorded samples
-- Works entirely locally on your Mac (M4, M1, Intel) or Raspberry Pi - no cloud needed!
-- Takes just a few seconds to train
-- Save the model to `training_data/hey_edge/models/hey_edge_verifier.pkl`
-
-**Step 4: Test your custom model**
-```bash
-./edge-wake-word test-custom --wake-word "hey edge"
-```
-
-The model path is auto-detected, or you can specify it manually:
-```bash
-./edge-wake-word test-custom --wake-word "hey edge" --model path/to/model.pkl
-```
-
-### Advanced Training Options
-
-Record with negative samples (improves accuracy):
-```bash
-./edge-wake-word train --wake-word "hey edge" \
-  --num-samples 50 \
-  --with-negatives \
-  --duration 2.5
-```
-
-Customize output location:
-```bash
-./edge-wake-word train --wake-word "hey edge" \
-  --output-dir ./my_training_data \
-  --num-samples 100
-```
-
-### Run Mode - Production Use
-
-Run the voice assistant in production mode:
-
-```bash
-./edge-wake-word run
-```
-
-Run with specific wake words:
-```bash
-./edge-wake-word run --wake-words alexa hey_jarvis
-```
-
-Run with custom threshold (less sensitive, fewer false positives):
-```bash
-./edge-wake-word run --threshold 0.7 --quiet
-```
-
-## CLI Reference
-
-### Train Mode
-```bash
-edge-wake-word train [OPTIONS]
-```
-
-**Options:**
-- `--wake-word TEXT`: Wake word to train (required)
-- `--num-samples INT`: Number of samples to record (default: 5, use 50-100 for production)
-- `--duration FLOAT`: Duration of each sample in seconds (default: 2.0)
-- `--output-dir PATH`: Output directory for samples (default: training_data)
-- `--with-negatives`: Also collect negative samples
-- `--test-mic`: Test microphone before recording
-- `--list-devices`: List available audio devices
-
-### Train-Local Mode (NEW!)
-```bash
-edge-wake-word train-local [OPTIONS]
-```
-
-Train a custom verifier model locally using your recorded samples.
-
-**Options:**
-- `--wake-word TEXT`: Wake word to train (must have recorded samples)
-- `--base-model TEXT`: Base openWakeWord model to use (default: alexa)
-- `--data-dir PATH`: Training data directory (default: training_data)
-- `--output PATH`: Custom output path for the model (optional)
-- `--verifier-threshold FLOAT`: Verifier activation threshold (default: 0.3)
-
-**How it works:**
-- Uses openWakeWord's Custom Verifier approach
-- Trains a lightweight personalized model on top of a base model
-- Runs entirely on CPU (M4 Mac, Raspberry Pi, etc.)
-- Training takes just seconds with 5-10 samples
-- Model is speaker-specific (works best for the person who recorded samples)
-
-### Test-Custom Mode
-```bash
-edge-wake-word test-custom [OPTIONS]
-```
-
-Test your locally-trained custom wake word model.
-
-**Options:**
-- `--wake-word TEXT`: Wake word to test (required)
-- `--model PATH`: Path to trained verifier model (.pkl file, auto-detected if not specified)
-- `--base-model TEXT`: Base model used during training (default: alexa)
-- `--data-dir PATH`: Training data directory for auto-detection (default: training_data)
-- `--threshold FLOAT`: Base model detection threshold (default: 0.5)
-- `--verifier-threshold FLOAT`: Verifier confidence threshold (default: 0.3)
-
-### Test Mode
-```bash
-edge-wake-word test [OPTIONS]
-```
-
-**Options:**
-- `--model PATH`: Path to custom model file (.tflite or .onnx)
-- `--wake-words WORD [WORD ...]`: Specific wake words to test
-- `--threshold FLOAT`: Detection confidence threshold (default: 0.5)
-
-### Run Mode
-```bash
-edge-wake-word run [OPTIONS]
-```
-
-**Options:**
-- `--wake-words WORD [WORD ...]`: Wake words to detect
-- `--threshold FLOAT`: Detection confidence threshold (default: 0.5)
-- `--quiet`: Suppress status messages
-
-## Project Structure
-
-```
-voice-activation-and-recognition/
-├── src/
-│   └── voice_assistant/
-│       ├── __init__.py              # Package initialization
-│       ├── wake_word_detector.py    # Wake word detection module
-│       └── audio_recorder.py        # Audio recording for training
-├── tests/                           # Unit tests (future)
-├── edge-wake-word                   # Main CLI tool
-├── demo.py                          # Simple demo (legacy)
-├── requirements.txt                 # Python dependencies
-└── README.md                        # This file
-```
-
-## Python API Usage
-
-You can also use the library programmatically:
-
-### Wake Word Detection
-
-```python
-from voice_assistant import WakeWordDetector
-
-def on_detected(wake_word: str, confidence: float):
-    print(f"Detected: {wake_word} ({confidence:.2%})")
-
-# Create detector
-detector = WakeWordDetector(
-    threshold=0.5,
-    on_detection=on_detected
-)
-
-# Start listening
-detector.start()
-
-# ... your application logic ...
-
-# Stop when done
-detector.stop()
-```
-
-### Audio Recording for Training
-
-```python
-from voice_assistant import AudioRecorder
-
-recorder = AudioRecorder(output_dir="my_training_data")
-
-# Record a batch of samples
-recorder.record_batch(
-    wake_word="hey_edge",
-    num_samples=50,
-    duration=2.0,
-    sample_type="positive"
-)
-
-# Test microphone
-recorder.test_microphone(duration=3.0)
-```
-
-### Context Manager
-
-```python
-with WakeWordDetector(threshold=0.5, on_detection=callback) as detector:
-    # Detector automatically starts
-    while True:
-        # Your application logic
-        pass
-    # Detector automatically stops
-```
+### Full End-to-End Test
+See `release/AUDIO_TEST_GUIDE.md` for complete testing guide.
 
 ## Configuration
 
-### Detection Threshold
+All configuration in `release/.voice-assistant-state.json`:
 
-The `--threshold` parameter controls sensitivity:
-- **0.3-0.4**: More sensitive, may have false positives
-- **0.5**: Balanced (recommended default)
-- **0.6-0.8**: Less sensitive, fewer false positives
-
-### Available Pre-trained Wake Words
-
-The openWakeWord library includes:
-- `alexa`
-- `hey_jarvis`
-- `hey_mycroft`
-- `hey_rhasspy`
-- `ok_nabu`
-- And more (models downloaded automatically on first use)
-
-### Audio Parameters
-
-Default settings (optimized for openWakeWord):
-- Sample Rate: 16kHz
-- Chunk Size: 1280 samples (80ms)
-- Format: 16-bit PCM
-- Channels: Mono
-
-## Training Best Practices
-
-For best results when training custom wake words:
-
-1. **Record Enough Samples**:
-   - Quick demo/testing: 5 samples (default)
-   - Production quality: 50-100 samples minimum, more is better
-2. **Vary Conditions**:
-   - Different volumes (quiet, normal, loud)
-   - Different distances from microphone
-   - Different speaking speeds
-   - Different tones/inflections
-3. **Quality Over Quantity**: Ensure clear recordings without clipping
-4. **Negative Samples**: Optional but helpful for reducing false positives
-5. **Background Noise**: Record in the environment where you'll use it
-
-## Troubleshooting
-
-### macOS: PortAudio Issues
-
-If you get audio errors, install PortAudio:
-```bash
-brew install portaudio
-pip install --upgrade --force-reinstall pyaudio
+```json
+{
+  "wake_word": "hey edge",
+  "model_path": "models/hey_edge_v0.1.onnx",
+  "inference_endpoint": "http://localhost:8000/process",
+  "recognition_engine": "vosk",
+  "silence_timeout": 3.0,
+  "detection_threshold": 0.5,
+  "send_to_inference": true
+}
 ```
 
-### Raspberry Pi: Permission Denied
+## Documentation
 
-If you get audio permission errors:
+Located in `release/` directory:
+
+- **[README.md](release/README.md)** - Complete guide for release scripts
+- **[AUDIO_TEST_GUIDE.md](release/AUDIO_TEST_GUIDE.md)** - End-to-end voice testing
+- **[TEST_AGENT_GUIDE.md](release/TEST_AGENT_GUIDE.md)** - Test agent without voice
+- **[WAKE_WORD_TROUBLESHOOTING.md](release/WAKE_WORD_TROUBLESHOOTING.md)** - Fix detection issues
+- **[ARCHITECTURE.md](release/ARCHITECTURE.md)** - Technical details
+
+## Network Setup (Cross-Host)
+
+Run voice on one machine, agent on another:
+
+**Host 1 (Voice - Raspberry Pi/Mac with microphone)**
 ```bash
-sudo usermod -a -G audio $USER
-# Log out and back in
+./voice-part.py --endpoint http://192.168.1.100:8000/process
 ```
 
-### Models Not Downloading
-
-If models fail to download, check your internet connection. Models are cached in:
-- macOS: `~/.cache/openwakeword/`
-- Linux: `~/.cache/openwakeword/`
-
-### Microphone Not Working
-
-List available devices:
+**Host 2 (Agent - Any machine with Ollama)**
 ```bash
-./edge-wake-word train --list-devices
+./inference-agent.py  # Listens on 0.0.0.0:8000
 ```
 
-Test your microphone:
-```bash
-./edge-wake-word train --test-mic
-```
+## Platform Support
 
-### Poor Detection Accuracy
-
-- Lower the threshold: `--threshold 0.4`
-- Ensure you're using the correct wake word pronunciation
-- Record more training samples with varied conditions
-- Check microphone placement and quality
+| Platform | voice-part.py | inference-agent.py | Notes |
+|----------|---------------|-------------------|-------|
+| macOS (M1/M2/M3) | ✅ Full | ✅ Full | Best performance |
+| Raspberry Pi 5 | ✅ Full | ✅ Full | Recommended |
+| Raspberry Pi 4 | ✅ Full | ⚠️  Slow | Training: 15-20 min |
+| Linux (x86) | ✅ Full | ✅ Full | Tested on Ubuntu |
 
 ## Performance
 
-### Raspberry Pi 5
-- Can run 15-20 wake word models simultaneously
-- ~5-10% CPU usage per model
-- Low latency (<100ms detection time)
-- Recommended for production deployment
+| Metric | Raspberry Pi 5 | M4 Mac |
+|--------|---------------|---------|
+| Wake word latency | < 500ms | < 100ms |
+| Speech recognition | Real-time | Real-time |
+| Agent reasoning | 5-10s | 2-5s |
+| Total response time | 6-12s | 3-7s |
 
-### macOS
-- Negligible CPU usage on modern Macs
-- Real-time performance with multiple models
-- Great for development and testing
+## Troubleshooting
 
-## Next Steps
+### Wake Word Not Detecting
+```bash
+./voice-part.py --threshold 0.3  # More sensitive
+./voice-part.py --retrain  # Better samples
+./diagnose-wake-word.py  # Test thresholds
+```
 
-1. **Add Speech Recognition**: Integrate Vosk for Raspberry Pi and Whisper for macOS
-2. **Command Processing**: Build command parsing and execution pipeline
-3. **Audio Feedback**: Add beep or LED indication on wake word detection
-4. **Web Interface**: Optional web UI for configuration and monitoring
-5. **Home Assistant Integration**: Connect with home automation systems
+### Agent Not Responding
+```bash
+# Check agent running
+lsof -i :8000
 
-## Contributing
+# Start agent
+./inference-agent.py
 
-This is a demo/proof-of-concept project. Feel free to extend and customize for your needs.
+# Check Ollama
+ollama list
+```
+
+### Connection Refused
+Check endpoint in `.voice-assistant-state.json` matches running agent.
+
+## Advanced Usage
+
+### Change LLM Model
+
+Edit `inference-agent.py` line 145:
+```python
+model='mistral:7b',  # Faster
+model='llama3:13b',  # Better reasoning
+```
+
+### Add Custom Tools
+
+Edit `inference-agent.py`:
+```python
+def my_tool(arg: str) -> str:
+    """Your tool description."""
+    return "Result"
+
+TOOLS = {
+    "my_tool": my_tool,
+    # ... existing tools
+}
+
+# Update SYSTEM_PROMPT to include tool description
+```
+
+## How It Works
+
+### Voice Part
+1. Trains wake word from 5 samples + 20x synthetic augmentation
+2. Listens continuously with openWakeWord
+3. On detection, pauses wake word detector
+4. Starts Vosk speech recognition
+5. Sends sentences immediately to agent
+6. Resumes wake word after 3s silence
+
+### Inference Agent
+1. Receives transcript via HTTP POST
+2. Processes with ReAct loop:
+   - **Thought**: LLM reasons about what to do
+   - **Action**: Calls appropriate tool
+   - **Observation**: Gets tool result
+   - Repeats until final answer
+3. Returns structured response with full reasoning
+
+## Technologies
+
+- **openWakeWord** - Wake word detection (ONNX)
+- **Vosk** - Offline speech recognition
+- **Ollama** - Local LLM inference
+- **PyTorch** - Model training
+- **Flask** - HTTP server for agent
+- **PyAudio** - Audio I/O
 
 ## License
 
-This project uses the following open-source libraries:
-- **openWakeWord**: Apache 2.0 License
-- **PyAudio**: MIT License
+See individual component licenses.
 
-## Resources
+## Repository
 
-- [openWakeWord GitHub](https://github.com/dscripka/openWakeWord)
-- [openWakeWord Training Notebook](https://colab.research.google.com/drive/1q1oe2zOyZp7UsB3jJiQ1IFn8z5YfjwEb)
-- [Home Assistant Wake Words Collection](https://github.com/fwartner/home-assistant-wakewords-collection)
-- [PyAudio Documentation](https://people.csail.mit.edu/hubert/pyaudio/docs/)
+https://github.com/maxvpavlov/voice-assistant-ai
 
-## Support
+---
 
-For issues or questions:
-1. Check the troubleshooting section above
-2. Review openWakeWord documentation
-3. Test with `./edge-wake-word train --test-mic`
-4. Open an issue in this repository
-
-## Examples
-
-### Quick Test
-```bash
-# Install and test in under 5 minutes
-source setup-and-enter-venv.sh
-./edge-wake-word test
-# Say "Alexa" or "Hey Jarvis"
-```
-
-### Train Custom Wake Word
-```bash
-# Full training workflow
-./edge-wake-word train --wake-word "computer activate" --num-samples 100 --with-negatives
-# Upload samples to Colab notebook for training
-# Download trained model
-./edge-wake-word test --model my_model.onnx
-```
-
-### Production Deployment
-```bash
-# Run on Raspberry Pi with custom settings
-./edge-wake-word run --wake-words alexa --threshold 0.65 --quiet
-```
+**Remember**: Always run both scripts together:
+- `release/inference-agent.py` - The AI brain (Terminal 1)
+- `release/voice-part.py` - The voice interface (Terminal 2)
