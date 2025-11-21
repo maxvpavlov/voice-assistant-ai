@@ -62,6 +62,48 @@ See [AUDIO_TEST_GUIDE.md](AUDIO_TEST_GUIDE.md) for detailed testing instructions
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## 🧠 ML Pipeline
+
+Complete machine learning pipeline running locally on your device:
+
+```
+Audio Input (16kHz mono)
+    ↓
+Melspectrogram Features
+    ↓
+Google Audio Embeddings (openWakeWord - pre-trained)
+    ↓
+Custom Classifier (PyTorch → ONNX)
+    ↓
+Wake Word Detection (threshold: 0.3-0.5)
+    ↓
+[If detected] → Vosk Speech Recognition
+    ↓
+TDNN + i-vectors (Kaldi/nnet3)
+    ↓
+Acoustic Model + Language Model
+    ↓
+Transcript Text
+    ↓
+HTTP POST → Inference Agent (ReAct + Ollama LLM)
+```
+
+**Technologies:**
+- **openWakeWord**: Transfer learning on Google's audio embeddings + custom PyTorch classifier
+- **Vosk**: Kaldi ASR with TDNN neural networks and i-vector speaker adaptation
+- **Ollama**: Local LLM inference (gemma3:12b, llama3, etc.)
+
+**Training:**
+- Wake word: 5 samples + 20x synthetic augmentation = 100 training samples
+- Training time: ~3 min (Mac M4), ~5-8 min (Raspberry Pi 5)
+- Augmentations: pitch shift, time stretch, noise injection, volume variation
+
+**Performance:**
+- Fully offline (no cloud APIs)
+- Wake word latency: <100ms (Mac), <500ms (RPi 5)
+- Speech recognition: Real-time streaming
+- Total response: 3-7s (including LLM inference)
+
 ## 📦 The Two Scripts
 
 ### 1. `voice-part.py` - Voice Interface
