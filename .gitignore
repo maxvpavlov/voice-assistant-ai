@@ -75,3 +75,10 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# User training data (local only)
+trained_models/
+training_data/
+.voice-assistant-state.json
+models/*.onnx.data
+test_mic_visual.py

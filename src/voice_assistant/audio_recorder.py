@@ -96,19 +96,48 @@ class AudioRecorder:
             frames_per_buffer=self.CHUNK_SIZE
         )
 
-        # Record audio
+        # Record audio with live visualization
         frames = []
         num_chunks = int(self.SAMPLE_RATE / self.CHUNK_SIZE * duration)
+        peak_level = 1000  # For auto-scaling
 
-        for _ in range(num_chunks):
+        for i in range(num_chunks):
             data = stream.read(self.CHUNK_SIZE, exception_on_overflow=False)
             frames.append(data)
+
+            # Calculate audio level for visualization
+            audio_array = np.frombuffer(data, dtype=np.int16)
+            rms = np.sqrt(np.mean(audio_array.astype(np.float32) ** 2))
+
+            # Auto-scale peak
+            if rms > peak_level:
+                peak_level = rms
+            else:
+                peak_level = max(1000, peak_level * 0.99)
+
+            # Create visual bar
+            normalized = min(rms / peak_level, 1.0)
+            bar_width = 30
+            filled = int(normalized * bar_width)
+
+            # Color based on level
+            if normalized < 0.3:
+                color = '\033[92m'  # Green
+            elif normalized < 0.7:
+                color = '\033[93m'  # Yellow
+            else:
+                color = '\033[91m'  # Red
+            reset = '\033[0m'
+
+            bar = '█' * filled + '░' * (bar_width - filled)
+            progress = (i + 1) / num_chunks
+            print(f"\r   {color}│{bar}│{reset} {progress:.0%}", end="", flush=True)
 
         # Stop and close stream
         stream.stop_stream()
         stream.close()
 
-        print("✓ Recording complete!")
+        print(f"\r   {'─' * 32} ✓ Done!    ")
 
         # Save to file
         with wave.open(str(output_path), 'wb') as wf:
